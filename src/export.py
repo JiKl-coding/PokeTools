@@ -26,6 +26,57 @@ EXPORT_DIR = "data/export"
 EXPORT_PATH = os.path.join(EXPORT_DIR, "pokedata.xlsx")
 
 
+def _read_assets_blocks(path: str) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Parse config/assets.csv into ordered (heading, rows) blocks.
+
+    Input format:
+    - Headings are lines ending with ':' (e.g. 'IMAGES:')
+    - Data lines are 'name;address'
+    - Blank lines are ignored
+    """
+    if not os.path.exists(path):
+        raise RuntimeError(f"Missing assets config: {path}")
+
+    blocks: list[tuple[str, list[tuple[str, str]]]] = []
+    current_heading: Optional[str] = None
+    current_rows: list[tuple[str, str]] = []
+
+    with open(path, "r", encoding="utf-8") as f:
+        for raw_line in f.read().splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            if line.endswith(":"):
+                if current_heading is not None:
+                    blocks.append((current_heading, current_rows))
+                current_heading = line
+                current_rows = []
+                continue
+
+            if ";" not in line:
+                raise RuntimeError(
+                    f"Invalid assets.csv line (expected 'name;address'): {raw_line}"
+                )
+            name, address = line.split(";", 1)
+            name = name.strip()
+            address = address.strip()
+            if not name or not address:
+                raise RuntimeError(
+                    f"Invalid assets.csv line (empty name/address): {raw_line}"
+                )
+            if current_heading is None:
+                raise RuntimeError(
+                    "assets.csv must start with a heading line ending in ':'"
+                )
+            current_rows.append((name, address))
+
+    if current_heading is not None:
+        blocks.append((current_heading, current_rows))
+
+    return blocks
+
+
 def _read_derived(path: str) -> Dict[str, Any]:
     data = read_json(path)
     if not data:
@@ -211,7 +262,7 @@ def run_export_mvp(config_path: str = "config/config.json") -> int:
 
 
 def run_export_extended(config_path: str = "config/config.json") -> int:
-    """Export Extended: add Learnsets/Moves/Items/Abilities/Natures/Evolutions/TypeChart."""
+    """Export Extended: add Learnsets/Moves/Items/Abilities/Natures/Evolutions/TypeChart/Assets."""
     cfg = load_config(config_path)
     version_groups = cfg.get("version_groups", [])
     version_groups = [vg for vg in version_groups if isinstance(vg, str)]
@@ -574,6 +625,19 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     ]
     for r in required_meta_rows:
         _write_row(ws_meta, r)
+
+    # Sheet: Assets
+    # Layout: each heading creates a new 2-column block (NAME, ADDRESS), all starting at row 1.
+    ws_assets = wb.create_sheet("Assets")
+    assets_blocks = _read_assets_blocks(os.path.join("config", "assets.csv"))
+    for block_index, (heading, rows) in enumerate(assets_blocks):
+        start_col = 1 + (block_index * 2)
+        ws_assets.cell(row=1, column=start_col, value=heading)
+        ws_assets.cell(row=2, column=start_col, value="name")
+        ws_assets.cell(row=2, column=start_col + 1, value="address")
+        for i, (name, address) in enumerate(rows):
+            ws_assets.cell(row=3 + i, column=start_col, value=name)
+            ws_assets.cell(row=3 + i, column=start_col + 1, value=address)
 
     wb.save(EXPORT_PATH)
     print(f"export extended: wrote {EXPORT_PATH}")
