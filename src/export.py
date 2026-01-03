@@ -42,6 +42,37 @@ def _none_last(value: Any) -> tuple[bool, Any]:
     return (value is None, value)
 
 
+def _load_types_order() -> tuple[list[str], bool, str]:
+    """Load TypeChart ordering controls from config/typesOrder.json.
+
+    Supports keys used in spec/export.spec.md:
+    - typesOrder: list[str]
+    - IgnoreRest / ignoreRest: bool
+    - IgnoreRestFalseMode / ignoreRestFalseMode: str
+    """
+    cfg_path = os.path.join("config", "typesOrder.json")
+    cfg = read_json(cfg_path) or {}
+    if not isinstance(cfg, dict):
+        return ([], False, "Put at End")
+
+    order = cfg.get("typesOrder")
+    if not isinstance(order, list):
+        order = []
+    order = [v for v in order if isinstance(v, str) and v.strip()]
+
+    ignore_rest_raw = cfg.get("IgnoreRest")
+    if ignore_rest_raw is None:
+        ignore_rest_raw = cfg.get("ignoreRest")
+    ignore_rest = bool(ignore_rest_raw) if isinstance(ignore_rest_raw, bool) else False
+
+    mode = cfg.get("IgnoreRestFalseMode")
+    if mode is None:
+        mode = cfg.get("ignoreRestFalseMode")
+    mode = mode if isinstance(mode, str) and mode.strip() else "Put at End"
+
+    return (order, ignore_rest, mode)
+
+
 def _moveset_map(
     learnset_entries: List[Dict[str, Any]],
     version_groups: List[str],
@@ -462,32 +493,62 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             ],
         )
 
-    # Sheet: TypeChart (matrix, locked)
+    # Sheet: TypeChart (matrix)
+    # Matrix layout: attacking type (rows) x defending type (columns).
+    # Ordering for both axes is controlled by config/typesOrder.json.
     ws_tc = wb.create_sheet("TypeChart")
 
     type_key_to_display: Dict[str, str] = {}
+    display_to_type_key: Dict[str, str] = {}
     for rec in types_sorted:
         tk = rec.get("type_key")
         dn = rec.get("display_name")
         if isinstance(tk, str) and isinstance(dn, str):
             type_key_to_display[tk] = dn
+            display_to_type_key[dn] = tk
 
-    ordered_type_keys = [tk for tk in type_keys if tk in type_key_to_display]
-    header = ["ATTACKING_TYPE"] + [type_key_to_display[tk] for tk in ordered_type_keys]
+    type_key_to_index = {
+        tk: idx for idx, tk in enumerate(type_keys) if isinstance(tk, str)
+    }
+
+    order_list, ignore_rest, ignore_rest_mode = _load_types_order()
+    final_types: list[str] = [dn for dn in order_list if dn in display_to_type_key]
+
+    if not ignore_rest:
+        rest = sorted([dn for dn in display_to_type_key if dn not in set(final_types)])
+        # Only defined mode currently in config is "Put at End".
+        if isinstance(ignore_rest_mode, str) and ignore_rest_mode.strip().lower() == "put at end":
+            final_types.extend(rest)
+        else:
+            final_types.extend(rest)
+
+    header = ["ATTACKING_TYPE"] + list(final_types)
     _write_row(ws_tc, header)
 
-    # matrix rows correspond to type_keys ordering
-    for atk_idx, atk_key in enumerate(type_keys):
-        if atk_key not in type_key_to_display:
+    for atk_dn in final_types:
+        atk_key = display_to_type_key.get(atk_dn)
+        atk_idx = type_key_to_index.get(atk_key) if isinstance(atk_key, str) else None
+        if atk_idx is None:
             continue
-        row_vals: List[Any] = [type_key_to_display[atk_key]]
-        row = type_matrix[atk_idx] if atk_idx < len(type_matrix) else []
-        for def_idx, def_key in enumerate(type_keys):
-            if def_key not in type_key_to_display:
+
+        src_row = type_matrix[atk_idx] if atk_idx < len(type_matrix) else []
+        out_row: List[Any] = [atk_dn]
+
+        for def_dn in final_types:
+            def_key = display_to_type_key.get(def_dn)
+            def_idx = type_key_to_index.get(def_key) if isinstance(def_key, str) else None
+            if def_idx is None:
+                out_row.append(None)
                 continue
-            val = row[def_idx] if isinstance(row, list) and def_idx < len(row) else None
-            row_vals.append(val)
-        _write_row(ws_tc, row_vals)
+
+            multiplier = (
+                src_row[def_idx]
+                if isinstance(src_row, list) and def_idx < len(src_row)
+                else None
+            )
+            out_row.append(multiplier)
+
+        _write_row(ws_tc, out_row)
 
     # Sheet: Types
     ws_types = wb.create_sheet("Types")
