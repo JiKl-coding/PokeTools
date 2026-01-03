@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "ability_key": "battle-armor",
+      "effect_short": "Protects against critical hits."
+    },
+    {
+      "ability_key": "drizzle",
+      "effect_short": "Summons rain that lasts indefinitely upon entering battle."
+    },
+    {
+      "ability_key": "speed-boost",
+      "effect_short": "Raises Speed one stage after each turn."
+    },
+    {
+      "ability_key": "stench",
+      "effect_short": "Has a 10% chance of making target Pokémon flinch with each hit."
+    },
+    {
+      "ability_key": "sturdy",
+      "effect_short": "Prevents being KOed from full HP, leaving 1 HP instead. Protects against the one-hit KO moves regardless of HP."
+    }
+  ]
+}

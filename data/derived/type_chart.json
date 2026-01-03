@@ -1,0 +1,129 @@
+{
+  "type_chart_relations": [
+    {
+      "attacking_type": "fighting",
+      "defending_type": "fighting",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "fighting",
+      "defending_type": "flying",
+      "multiplier": 0.5
+    },
+    {
+      "attacking_type": "fighting",
+      "defending_type": "ground",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "fighting",
+      "defending_type": "normal",
+      "multiplier": 2.0
+    },
+    {
+      "attacking_type": "fighting",
+      "defending_type": "poison",
+      "multiplier": 0.5
+    },
+    {
+      "attacking_type": "flying",
+      "defending_type": "fighting",
+      "multiplier": 2.0
+    },
+    {
+      "attacking_type": "flying",
+      "defending_type": "flying",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "flying",
+      "defending_type": "ground",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "flying",
+      "defending_type": "normal",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "flying",
+      "defending_type": "poison",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "ground",
+      "defending_type": "fighting",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "ground",
+      "defending_type": "flying",
+      "multiplier": 0.0
+    },
+    {
+      "attacking_type": "ground",
+      "defending_type": "ground",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "ground",
+      "defending_type": "normal",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "ground",
+      "defending_type": "poison",
+      "multiplier": 2.0
+    },
+    {
+      "attacking_type": "normal",
+      "defending_type": "fighting",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "normal",
+      "defending_type": "flying",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "normal",
+      "defending_type": "ground",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "normal",
+      "defending_type": "normal",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "normal",
+      "defending_type": "poison",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "poison",
+      "defending_type": "fighting",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "poison",
+      "defending_type": "flying",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "poison",
+      "defending_type": "ground",
+      "multiplier": 0.5
+    },
+    {
+      "attacking_type": "poison",
+      "defending_type": "normal",
+      "multiplier": 1.0
+    },
+    {
+      "attacking_type": "poison",
+      "defending_type": "poison",
+      "multiplier": 0.5
+    }
+  ]
+}

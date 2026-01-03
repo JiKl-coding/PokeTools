@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "item_key": "great-ball",
+      "category": "standard-balls",
+      "effect_short": "Tries to catch a wild Pokémon. Success rate is 1.5×."
+    },
+    {
+      "item_key": "master-ball",
+      "category": "standard-balls",
+      "effect_short": "Catches a wild Pokémon every time."
+    },
+    {
+      "item_key": "poke-ball",
+      "category": "standard-balls",
+      "effect_short": "Tries to catch a wild Pokémon."
+    },
+    {
+      "item_key": "safari-ball",
+      "category": "standard-balls",
+      "effect_short": "Tries to catch a wild Pokémon in the Great Marsh or Safari Zone. Success rate is 1.5×."
+    },
+    {
+      "item_key": "ultra-ball",
+      "category": "standard-balls",
+      "effect_short": "Tries to catch a wild Pokémon. Success rate is 2×."
+    }
+  ]
+}

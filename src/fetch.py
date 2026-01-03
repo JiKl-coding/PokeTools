@@ -23,6 +23,7 @@ from .cache.io import (
     safe_filename,
     wrap_raw,
 )
+from .transform import run_transform_extended, run_transform_mvp, run_transform_production
 
 POKEMON_DIR = "data/raw/pokemon"
 SPECIES_DIR = "data/raw/species"
@@ -604,6 +605,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     all_cmd.add_argument("--limit", type=int, default=None)
     all_cmd.add_argument("--force", action="store_true")
 
+    transform = sub.add_parser("transform")
+    transform_sub = transform.add_subparsers(dest="stage")
+    transform_sub.add_parser("mvp")
+    transform_sub.add_parser("extended")
+    transform_sub.add_parser("production")
+
     return parser
 
 
@@ -626,6 +633,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "fetch" and args.entity == "all":
         force = bool(args.force) or default_force
         return run_fetch_all(args.limit, force, "config/config.json")
+
+    if args.command == "transform" and args.stage == "mvp":
+        return run_transform_mvp("config/config.json")
+
+    if args.command == "transform" and args.stage == "extended":
+        return run_transform_extended("config/config.json")
+
+    if args.command == "transform" and args.stage == "production":
+        return run_transform_production("config/config.json")
 
     parser.print_help()
     return 2
