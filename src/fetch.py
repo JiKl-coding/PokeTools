@@ -24,6 +24,7 @@ from .cache.io import (
     wrap_raw,
 )
 from .transform import run_transform_extended, run_transform_mvp, run_transform_production
+from .export import run_export_extended, run_export_mvp, run_export_production
 
 POKEMON_DIR = "data/raw/pokemon"
 SPECIES_DIR = "data/raw/species"
@@ -611,6 +612,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     transform_sub.add_parser("extended")
     transform_sub.add_parser("production")
 
+    export = sub.add_parser("export")
+    export_sub = export.add_subparsers(dest="stage")
+    export_sub.add_parser("mvp")
+    export_sub.add_parser("extended")
+    export_sub.add_parser("production")
+
     return parser
 
 
@@ -642,6 +649,15 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "transform" and args.stage == "production":
         return run_transform_production("config/config.json")
+
+    if args.command == "export" and args.stage == "mvp":
+        return run_export_mvp("config/config.json")
+
+    if args.command == "export" and args.stage == "extended":
+        return run_export_extended("config/config.json")
+
+    if args.command == "export" and args.stage == "production":
+        return run_export_production("config/config.json")
 
     parser.print_help()
     return 2
