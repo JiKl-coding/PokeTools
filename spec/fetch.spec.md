@@ -18,6 +18,12 @@ This layer:
 ### 1.2 Fetcher
 - Python fetcher uses **pokebase** as the primary API wrapper.
 
+### List discovery transport
+List endpoints (e.g. `/pokemon`, `/move`, `/item`, ...) MAY be fetched using direct HTTP (`requests`)
+for simplicity and reliability.
+Detail records should be fetched via pokebase when possible.
+
+
 ### 1.3 Optional HTTP-level cache (non-authoritative)
 - `requests-cache` MAY be enabled to reduce repeated HTTP calls during development.
 - HTTP cache is **not** a replacement for file-based raw cache.
@@ -197,6 +203,10 @@ On permanent failures (404 for a discovered key):
 - log and continue (do not crash the entire run)
 - mark in logs as missing
 
+### 404 handling
+If a discovered key returns 404, the fetcher MUST log the missing record and continue
+(the run must not crash).
+
 ### 6.2 Logging
 A fetch run MUST log:
 - started_at, finished_at
@@ -238,6 +248,13 @@ The pipeline exposes these commands:
 - `--force`: sets `force_refresh=true`
 - `--entity <name>`: restricts to a specific entity type (optional)
 - `--limit <n>`: development-only limit for quick tests (optional)
+
+### --limit semantics (development/testing)
+When `--limit N` is provided, discovery from list endpoints MUST be limited to the **first N keys per entity**.
+Example:
+- `fetch reference --limit 20` fetches up to 20 moves, 20 items, 20 abilities, 20 natures, 20 types.
+- `fetch all --limit 20` applies the same rule to each entity discovery, including pokemon forms.
+
 
 ---
 
