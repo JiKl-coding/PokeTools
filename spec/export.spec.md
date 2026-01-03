@@ -210,16 +210,16 @@ One row = one EvolutionEdge (flattened evolution condition).
 ---
 
 ## 4.8 Sheet: TypeChart
-Choose one representation and keep it consistent.
 
-### Representation A: Relations list (recommended)
+### Representation B: Matrix
 Columns (in order):
 - `ATTACKING_TYPE` (string - `DISPLAY_NAME`)
 - `DEFENDING_TYPE` (string - `DISPLAY_NAME`)
 - `MULTIPLIER` (float)
 
 Row ordering:
-- Order by `ATTACKING_TYPE`, `DEFENDING_TYPE`
+- Order `ATTACKING_TYPE`, `DEFENDING_TYPE` by config/typesOrder.json typesOrder
+- IgnoreRest: by config/typesOrder.json ignoreRest (if false, then use IgnoreRestFalseMode)
 
 (If using matrix representation, it must be defined explicitly in implementation docs.)
 
