@@ -117,6 +117,7 @@ One row = one LearnsetEntry (detailed learn method record).
 
 ### Columns (in order)
 - `FORM_KEY` (string)
+- `DISPLAY_NAME` (string)
 - `VERSION_GROUP` (string)
 - `MOVE_KEY` (string)
 - `METHOD` (string)
@@ -132,6 +133,7 @@ One row = one move.
 
 ### Columns (in order)
 - `MOVE_KEY` (string)
+- `DISPLAY_NAME` (string)
 - `TYPE` (string)
 - `CATEGORY` (string)
 - `POWER` (int|null)
@@ -150,6 +152,7 @@ One row = one item.
 
 ### Columns (in order)
 - `ITEM_KEY` (string)
+- `DISPLAY_NAME` (string)
 - `CATEGORY` (string|null)
 - `EFFECT_SHORT` (string|null)
 
@@ -163,6 +166,7 @@ One row = one ability.
 
 ### Columns (in order)
 - `ABILITY_KEY` (string)
+- `DISPLAY_NAME` (string)
 - `EFFECT_SHORT` (string|null)
 
 ### Row ordering
@@ -175,6 +179,7 @@ One row = one nature.
 
 ### Columns (in order)
 - `NATURE_KEY` (string)
+- `DISPLAY_NAME` (string)
 - `INCREASED_STAT` (string|null)
 - `DECREASED_STAT` (string|null)
 
@@ -209,8 +214,8 @@ Choose one representation and keep it consistent.
 
 ### Representation A: Relations list (recommended)
 Columns (in order):
-- `ATTACKING_TYPE` (string)
-- `DEFENDING_TYPE` (string)
+- `ATTACKING_TYPE` (string - `DISPLAY_NAME`)
+- `DEFENDING_TYPE` (string - `DISPLAY_NAME`)
 - `MULTIPLIER` (float)
 
 Row ordering:

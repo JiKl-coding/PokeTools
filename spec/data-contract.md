@@ -10,6 +10,12 @@ This document defines:
 
 ---
 
+## 0.1 Locked Decisions
+- `DISPLAY_NAME` naming_style: `slug_titlecase`
+- `TypeChart` representation: `matrix`
+
+---
+
 ## 1. Raw Storage Contract (Cached API Payloads)
 
 ### 1.1 RawPokemon (Form-level)
@@ -172,6 +178,14 @@ Represents one Pokémon form to be exported as one row in the Excel Pokédex she
 - Prefer official artwork when available; otherwise fallback to default front sprite.
 - Apply the same rule for shiny.
 
+**Display name rule (`naming_style = slug_titlecase`):**
+- Input: `form_key` (e.g. `charizard-mega-y`)
+- Replace `-` with spaces
+- Split into tokens by spaces
+- Title Case each token
+- Single-letter tokens are uppercase (`x`→`X`, `y`→`Y`)
+- Example: `charizard-mega-y` → `Charizard Mega Y`
+
 ---
 
 ### 2.2 LearnsetEntry (Derived)
@@ -179,6 +193,7 @@ Represents one learnable move for a given Pokémon form in a specific version gr
 
 **Primary keys (composite):**
 - `form_key`: string
+- `display_name`: string
 - `version_group`: string
 - `move_key`: string
 - `method`: string
@@ -186,6 +201,7 @@ Represents one learnable move for a given Pokémon form in a specific version gr
 
 **Fields:**
 - `form_key`: string
+- `display_name`: string
 - `version_group`: string
 - `move_key`: string
 - `method`: enum string (e.g. `level-up`, `machine`, `egg`, `tutor`, `stadium-surfing-pikachu`, etc.)
@@ -200,6 +216,7 @@ Represents one learnable move for a given Pokémon form in a specific version gr
 **Primary key:** `move_key`  
 **Fields:**
 - `move_key`: string
+- `display_name`: string
 - `type`: string
 - `category`: string (`physical` / `special` / `status`)
 - `power`: int|null
@@ -214,8 +231,10 @@ Represents one learnable move for a given Pokémon form in a specific version gr
 **Primary key:** `item_key`  
 **Fields:**
 - `item_key`: string
+- `display_name`: string
 - `category`: string|null
 - `effect_short`: string|null
+- `icon_url` : string|null
 
 ---
 
@@ -223,6 +242,7 @@ Represents one learnable move for a given Pokémon form in a specific version gr
 **Primary key:** `ability_key`  
 **Fields:**
 - `ability_key`: string
+- `display_name`: string
 - `effect_short`: string|null
 
 ---
@@ -231,6 +251,7 @@ Represents one learnable move for a given Pokémon form in a specific version gr
 **Primary key:** `nature_key`  
 **Fields:**
 - `nature_key`: string
+- `display_name`: string
 - `increased_stat`: string|null
 - `decreased_stat`: string|null
 
@@ -266,14 +287,17 @@ Represents one directed evolution relationship between two species.
 
 ---
 
-### 2.8 TypeChart (Derived)
-Two supported representations (choose one and keep consistent):
-
-**Option A (Matrix):**
+### 2.8 TypeChart (Derived) – Matrix (locked)
 - A 2D matrix of multipliers: `attacking_type` x `defending_type` → `multiplier` (0, 0.5, 1, 2)
+- Rows/columns are ordered by `type_key` ascending (deterministic)
 
-**Option B (Relations list):**
-- Rows: `(attacking_type, defending_type, multiplier)`
+### 2.9 X Type (Derived)
+**Primary key:** `type_key`
+
+**Fields:**
+- `type_key`: string
+- `display_name`: string
+- `icon_url`: string|null
 
 ---
 
@@ -337,6 +361,7 @@ The workbook contains the following sheets:
 
 **Columns (in order):**
 - `FORM_KEY` (string)
+- `DISPLAY_NAME` (string)
 - `VERSION_GROUP` (string)
 - `MOVE_KEY` (string)
 - `METHOD` (string)
@@ -347,6 +372,7 @@ The workbook contains the following sheets:
 ### 3.5 Sheet: Moves
 **Columns:**
 - `MOVE_KEY`
+- `DISPLAY_NAME` (string)
 - `TYPE`
 - `CATEGORY`
 - `POWER`
@@ -360,6 +386,7 @@ The workbook contains the following sheets:
 ### 3.6 Sheet: Items
 **Columns:**
 - `ITEM_KEY`
+- `DISPLAY_NAME` (string)
 - `CATEGORY`
 - `EFFECT_SHORT`
 
@@ -368,6 +395,7 @@ The workbook contains the following sheets:
 ### 3.7 Sheet: Abilities
 **Columns:**
 - `ABILITY_KEY`
+- `DISPLAY_NAME` (string)
 - `EFFECT_SHORT`
 
 ---
@@ -375,6 +403,7 @@ The workbook contains the following sheets:
 ### 3.8 Sheet: Natures
 **Columns:**
 - `NATURE_KEY`
+- `DISPLAY_NAME` (string)
 - `INCREASED_STAT`
 - `DECREASED_STAT`
 
@@ -399,26 +428,25 @@ The workbook contains the following sheets:
 
 ---
 
-### 3.10 Sheet: TypeChart
-Choose representation (A or B) and keep it consistent.
+### 3.10 Sheet: TypeChart (Matrix)
+- Columns: `ATTACKING_TYPE`, then one column per defending type (ordered by type_key asc)
+- Rows: one row per attacking type (ordered by type_key asc)
+- Cells: multiplier (0, 0.5, 1, 2)
+- Use `DISPLAY_NAME` instead of `TYPE_KEY`
 
 ---
 
-### 3.11 Sheet: Meta
+### 3.11 Sheet: Types
+- `DISPLAY_NAME` (string)
+- `TYPE_KEY`
+- `ICON_URL`
+
+---
+
+### 3.12 Sheet: Meta
 **Purpose:** traceability and reproducibility.
 
 **Fields (suggested):**
-- `generated_at` (ISO datetime)
-- `pokeapi_base_url`
-- `version_groups` (comma-separated)
-- `about_language`
-- `naming_style`
-- `pipeline_version`
 
 ---
 
-## 4. Open Decisions (Fill and later lock)
-- Which `version_groups` are exported for learnsets?
-- Which language is used for `ABOUT`?
-- Which naming style is used for `DISPLAY_NAME`?
-- TypeChart representation (matrix vs list)?

@@ -37,6 +37,11 @@ def _write_row(ws: Any, values: List[Any]) -> None:
     ws.append(values)
 
 
+def _none_last(value: Any) -> tuple[bool, Any]:
+    """Return a deterministic sort key that places None after real values."""
+    return (value is None, value)
+
+
 def _moveset_map(
     learnset_entries: List[Dict[str, Any]],
     version_groups: List[str],
@@ -188,6 +193,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     natures_doc = _read_derived(os.path.join(DERIVED_DIR, "natures.json"))
     evolutions_doc = _read_derived(os.path.join(DERIVED_DIR, "evolution_edges.json"))
     type_chart_doc = _read_derived(os.path.join(DERIVED_DIR, "type_chart.json"))
+    types_doc = _read_derived(os.path.join(DERIVED_DIR, "types.json"))
     meta_doc = _read_derived(os.path.join(DERIVED_DIR, "meta.json"))
 
     forms = forms_doc.get("pokemon_forms")
@@ -197,7 +203,9 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     abilities = abilities_doc.get("abilities")
     natures = natures_doc.get("natures")
     evolutions = evolutions_doc.get("evolution_edges")
-    type_relations = type_chart_doc.get("type_chart_relations")
+    type_keys = type_chart_doc.get("type_keys")
+    type_matrix = type_chart_doc.get("matrix")
+    types = types_doc.get("types")
 
     if not isinstance(forms, list):
         raise RuntimeError("pokemon_forms.json missing pokemon_forms list")
@@ -213,8 +221,12 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
         raise RuntimeError("natures.json missing natures list")
     if not isinstance(evolutions, list):
         raise RuntimeError("evolution_edges.json missing evolution_edges list")
-    if not isinstance(type_relations, list):
-        raise RuntimeError("type_chart.json missing type_chart_relations list")
+    if not isinstance(type_keys, list) or not all(isinstance(t, str) for t in type_keys):
+        raise RuntimeError("type_chart.json missing type_keys list")
+    if not isinstance(type_matrix, list):
+        raise RuntimeError("type_chart.json missing matrix")
+    if not isinstance(types, list):
+        raise RuntimeError("types.json missing types list")
 
     ensure_dir(EXPORT_DIR)
 
@@ -290,7 +302,10 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
 
     # Sheet: Learnsets
     ws_ls = wb.create_sheet("Learnsets")
-    _write_row(ws_ls, ["FORM_KEY", "VERSION_GROUP", "MOVE_KEY", "METHOD", "LEVEL"])
+    _write_row(
+        ws_ls,
+        ["FORM_KEY", "DISPLAY_NAME", "VERSION_GROUP", "MOVE_KEY", "METHOD", "LEVEL"],
+    )
     ls_sorted = [rec for rec in learnset_entries if isinstance(rec, dict)]
     ls_sorted.sort(
         key=lambda r: (
@@ -298,7 +313,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             r.get("version_group"),
             r.get("move_key"),
             r.get("method"),
-            r.get("level"),
+            _none_last(r.get("level")),
         )
     )
     for rec in ls_sorted:
@@ -306,6 +321,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             ws_ls,
             [
                 rec.get("form_key"),
+                rec.get("display_name"),
                 rec.get("version_group"),
                 rec.get("move_key"),
                 rec.get("method"),
@@ -319,6 +335,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
         ws_moves,
         [
             "MOVE_KEY",
+            "DISPLAY_NAME",
             "TYPE",
             "CATEGORY",
             "POWER",
@@ -335,6 +352,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             ws_moves,
             [
                 rec.get("move_key"),
+                rec.get("display_name"),
                 rec.get("type"),
                 rec.get("category"),
                 rec.get("power"),
@@ -347,30 +365,53 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
 
     # Sheet: Items
     ws_items = wb.create_sheet("Items")
-    _write_row(ws_items, ["ITEM_KEY", "CATEGORY", "EFFECT_SHORT"])
+    _write_row(ws_items, ["ITEM_KEY", "DISPLAY_NAME", "CATEGORY", "EFFECT_SHORT", "ICON_URL"])
     items_sorted = [rec for rec in items if isinstance(rec, dict)]
     items_sorted.sort(key=lambda r: r.get("item_key"))
     for rec in items_sorted:
-        _write_row(ws_items, [rec.get("item_key"), rec.get("category"), rec.get("effect_short")])
+        _write_row(
+            ws_items,
+            [
+                rec.get("item_key"),
+                rec.get("display_name"),
+                rec.get("category"),
+                rec.get("effect_short"),
+                rec.get("icon_url"),
+            ],
+        )
 
     # Sheet: Abilities
     ws_abilities = wb.create_sheet("Abilities")
-    _write_row(ws_abilities, ["ABILITY_KEY", "EFFECT_SHORT"])
+    _write_row(ws_abilities, ["ABILITY_KEY", "DISPLAY_NAME", "EFFECT_SHORT"])
     abilities_sorted = [rec for rec in abilities if isinstance(rec, dict)]
     abilities_sorted.sort(key=lambda r: r.get("ability_key"))
     for rec in abilities_sorted:
-        _write_row(ws_abilities, [rec.get("ability_key"), rec.get("effect_short")])
+        _write_row(
+            ws_abilities,
+            [rec.get("ability_key"), rec.get("display_name"), rec.get("effect_short")],
+        )
 
     # Sheet: Natures
     ws_natures = wb.create_sheet("Natures")
-    _write_row(ws_natures, ["NATURE_KEY", "INCREASED_STAT", "DECREASED_STAT"])
+    _write_row(
+        ws_natures,
+        ["NATURE_KEY", "DISPLAY_NAME", "INCREASED_STAT", "DECREASED_STAT"],
+    )
     natures_sorted = [rec for rec in natures if isinstance(rec, dict)]
     natures_sorted.sort(key=lambda r: r.get("nature_key"))
     for rec in natures_sorted:
         _write_row(
             ws_natures,
-            [rec.get("nature_key"), rec.get("increased_stat"), rec.get("decreased_stat")],
+            [
+                rec.get("nature_key"),
+                rec.get("display_name"),
+                rec.get("increased_stat"),
+                rec.get("decreased_stat"),
+            ],
         )
+
+    types_sorted = [rec for rec in types if isinstance(rec, dict)]
+    types_sorted.sort(key=lambda r: r.get("type_key"))
 
     # Sheet: Evolutions
     # Note: data-contract.md defines FROM_DEX_ID/TO_DEX_ID etc; export writes derived values.
@@ -395,11 +436,11 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     evo_sorted = [rec for rec in evolutions if isinstance(rec, dict)]
     evo_sorted.sort(
         key=lambda r: (
-            r.get("from_dex_id"),
-            r.get("to_dex_id"),
-            r.get("trigger"),
-            r.get("min_level"),
-            r.get("item_key"),
+            _none_last(r.get("from_dex_id")),
+            _none_last(r.get("to_dex_id")),
+            _none_last(r.get("trigger")),
+            _none_last(r.get("min_level")),
+            _none_last(r.get("item_key")),
         )
     )
     for rec in evo_sorted:
@@ -421,20 +462,38 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             ],
         )
 
-    # Sheet: TypeChart (relations list)
+    # Sheet: TypeChart (matrix, locked)
     ws_tc = wb.create_sheet("TypeChart")
-    _write_row(ws_tc, ["ATTACKING_TYPE", "DEFENDING_TYPE", "MULTIPLIER"])
-    tc_sorted = [rec for rec in type_relations if isinstance(rec, dict)]
-    tc_sorted.sort(key=lambda r: (r.get("attacking_type"), r.get("defending_type")))
-    for rec in tc_sorted:
-        _write_row(
-            ws_tc,
-            [
-                rec.get("attacking_type"),
-                rec.get("defending_type"),
-                rec.get("multiplier"),
-            ],
-        )
+
+    type_key_to_display: Dict[str, str] = {}
+    for rec in types_sorted:
+        tk = rec.get("type_key")
+        dn = rec.get("display_name")
+        if isinstance(tk, str) and isinstance(dn, str):
+            type_key_to_display[tk] = dn
+
+    ordered_type_keys = [tk for tk in type_keys if tk in type_key_to_display]
+    header = ["ATTACKING_TYPE"] + [type_key_to_display[tk] for tk in ordered_type_keys]
+    _write_row(ws_tc, header)
+
+    # matrix rows correspond to type_keys ordering
+    for atk_idx, atk_key in enumerate(type_keys):
+        if atk_key not in type_key_to_display:
+            continue
+        row_vals: List[Any] = [type_key_to_display[atk_key]]
+        row = type_matrix[atk_idx] if atk_idx < len(type_matrix) else []
+        for def_idx, def_key in enumerate(type_keys):
+            if def_key not in type_key_to_display:
+                continue
+            val = row[def_idx] if isinstance(row, list) and def_idx < len(row) else None
+            row_vals.append(val)
+        _write_row(ws_tc, row_vals)
+
+    # Sheet: Types
+    ws_types = wb.create_sheet("Types")
+    _write_row(ws_types, ["DISPLAY_NAME", "TYPE_KEY", "ICON_URL"])
+    for rec in types_sorted:
+        _write_row(ws_types, [rec.get("display_name"), rec.get("type_key"), rec.get("icon_url")])
 
     # Sheet: Meta
     ws_meta = wb.create_sheet("Meta")
