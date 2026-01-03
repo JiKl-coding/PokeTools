@@ -143,6 +143,7 @@ If `include_evolutions=true`:
 
 ### 4.4 Types (RawType)
 Type data is required to build the TypeChart.
+- Edit STELLAR type: stellar x stellar = 2
 
 **Discovery:**
 - Fetch list via `GET /type?limit=1000`

@@ -262,4 +262,11 @@ def build_type_chart_matrix(raw_types: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         matrix.append(row)
 
+    # Spec override (spec/fetch.spec.md 4.4): stellar x stellar must be 2.
+    # Apply at the derived chart level to keep output deterministic.
+    if "stellar" in type_names:
+        idx = type_names.index("stellar")
+        if idx < len(matrix) and idx < len(matrix[idx]):
+            matrix[idx][idx] = 2.0
+
     return {"type_keys": type_names, "matrix": matrix}
