@@ -242,6 +242,15 @@ Traceability and reproducibility information.
 
 ---
 
+### 4.10 Sheet: Assets
+- create sheet `Assets`
+- load data from `config/assets.csv` (`name;address`)
+- rows are grouped by headings (e.g. `IMAGES:`)
+- each heading starts a new column block
+- all column blocks start at row 1
+
+---
+
 ## 5. Export Modes
 
 ### 5.1 MVP mode

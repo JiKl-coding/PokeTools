@@ -1,0 +1,33 @@
+// This CSV file defines color schemes for Pokemon types and UI elements used in the applications.
+
+name;description;rgb;hex
+NORMAL;Pokemon type Normal – neutral balance;168,168,120;#A8A878
+FIRE;Pokemon type Fire – heat, offense;240,128,48;#CC0000
+WATER;Pokemon type Water – flow, stability;104,144,240;#6890F0
+ELECTRIC;Pokemon type Electric – energy, speed;248,208,48;#F8D030
+GRASS;Pokemon type Grass – nature, recovery;120,200,80;#78C850
+ICE;Pokemon type Ice – cold, control;152,216,216;#98D8D8
+FIGHTING;Pokemon type Fighting – physical power;192,48,40;#C03028
+POISON;Pokemon type Poison – toxins, debuff;160,64,160;#A040A0
+GROUND;Pokemon type Ground – earth, weight;224,192,104;#E0C068
+FLYING;Pokemon type Flying – air, mobility;168,144,240;#A890F0
+PSYCHIC;Pokemon type Psychic – mind, special;248,88,136;#F85888
+BUG;Pokemon type Bug – swarm, growth;168,184,32;#A8B820
+ROCK;Pokemon type Rock – stone, defense;184,160,56;#B8A038
+GHOST;Pokemon type Ghost – spirit, mystery;112,88,152;#705898
+DRAGON;Pokemon type Dragon – power, rarity;112,56,248;#7038F8
+DARK;Pokemon type Dark – shadow, tactics;112,88,72;#705848
+STEEL;Pokemon type Steel – metal, resistance;184,184,208;#B8B8D0
+FAIRY;Pokemon type Fairy – magic, charm;238,153,172;#EE99AC
+
+UI_BACKGROUND;Application main background;245,245,245;#D9D9D9
+UI_CARD;Card / panel surface;255,255,255;#FFFFFF
+UI_BORDER;Soft borders and dividers;224,224,224;#E0E0E0
+UI_TEXT_PRIMARY;Primary text color;33,33,33;#212121
+UI_TEXT_SECONDARY;Secondary text color;97,97,97;#616161
+UI_MUTED;Disabled or hint text;158,158,158;#9E9E9E
+UI_ACCENT_PRIMARY;Primary accent / CTA;0,112,192;#0070C0
+UI_ACCENT_SUCCESS;Success / positive state;0,176,80;#00B050
+UI_ACCENT_WARNING;Warning / caution;255,193,7;#C89400
+UI_ACCENT_ERROR;Error / danger state;204,0,0;#CC0000
+UI_SHADOW;Shadow base color (use with opacity);0,0,0;#000000
