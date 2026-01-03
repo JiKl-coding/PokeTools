@@ -1,0 +1,16 @@
+# cache & generated data
+data/raw/
+data/export/
+data/logs/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# editor
+.vscode/
+.idea/
+
+# development details
+/dev/
