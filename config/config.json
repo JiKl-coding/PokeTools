@@ -1,0 +1,17 @@
+{
+  "pokeapi_base_url": "https://pokeapi.co/api/v2",
+  "ttl_days": {
+    "pokemon": 7,
+    "species": 7,
+    "evolution_chain": 7,
+    "move": 7,
+    "item": 7,
+    "ability": 7,
+    "nature": 7,
+    "type": 7
+  },
+  "about_language": "en",
+  "version_groups": [],
+  "include_evolutions": true,
+  "force_refresh": false
+}

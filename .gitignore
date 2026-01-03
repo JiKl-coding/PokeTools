@@ -11,6 +11,3 @@ __pycache__/
 # editor
 .vscode/
 .idea/
-
-# development details
-/dev/
