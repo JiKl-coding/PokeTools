@@ -48,7 +48,8 @@ def _moveset_map(
         form_key = rec.get("form_key")
         vg = rec.get("version_group")
         move_key = rec.get("move_key")
-        if not isinstance(form_key, str) or not isinstance(vg, str) or not isinstance(move_key, str):
+        if not isinstance(form_key, str) or not isinstance(vg, str) or \
+           not isinstance(move_key, str):
             continue
         if vg not in vg_allow:
             continue
