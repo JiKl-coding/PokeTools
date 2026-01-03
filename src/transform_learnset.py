@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional
 
+from .naming import slug_titlecase
+
 
 def iter_learnset_entries(
     *,
@@ -60,6 +62,7 @@ def iter_learnset_entries(
             out.append(
                 {
                     "form_key": form_key,
+                    "display_name": slug_titlecase(form_key),
                     "version_group": vg,
                     "move_key": move_key,
                     "method": method,

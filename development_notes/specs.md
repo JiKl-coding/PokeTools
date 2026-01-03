@@ -24,5 +24,9 @@
    - Specifies sheets, columns, ordering, and allowed formatting.
    - No fetching or business logic.
 
+6. `assets.spec.md`
+   - Defines **how to derive and export images for types** into `pokedata.xlsx`.
+   - No fetching or business logic.
+
 **Prompt example:**
 Implement 1. MVP Fetch – Initial Test according to #1_fetch_prompt.md. FOLLOW Requirements & Source of Truth defined in the #1_fetch_prompt.md. Do not implement any other phases or additional logic.

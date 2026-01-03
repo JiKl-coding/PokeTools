@@ -4,7 +4,9 @@ PokeTools is a small, spec-driven Pokédex data pipeline:
 
 1) **Fetch** raw PokéAPI payloads into `data/raw/**` (cached with TTL)
 2) **Transform** raw JSON into derived datasets in `data/derived/**` (offline, deterministic)
-3) **Export** derived datasets to `data/export/pokedata.xlsx`
+3) **Export** derived datasets to `data/export/pokedata.xlsx` (you can check the file in repo)
+
+You can use the `pokedata.xlsx` to build your own tool/app or you can use my `pokedex.xlsm` and other tools.
 
 Thanks to **PokéAPI** (data source) and **pokebase** (Python client).
 

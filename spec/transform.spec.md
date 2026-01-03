@@ -167,6 +167,7 @@ Derived models:
 ### Rules
 - Extract category
 - Extract short effect text by language
+- Extract icon_url from `data.sprites.default`
 
 ---
 

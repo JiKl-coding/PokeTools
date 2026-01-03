@@ -20,10 +20,12 @@ from .transform_reference import (
     build_item,
     build_move,
     build_nature,
-    build_type_chart_relations,
+    build_type,
+    build_type_chart_matrix,
 )
 from .transform_learnset import iter_learnset_entries
 from .transform_evolution import flatten_evolution_chain, species_name_to_id_map
+from .naming import slug_titlecase
 
 POKEMON_DIR = "data/raw/pokemon"
 SPECIES_DIR = "data/raw/species"
@@ -266,7 +268,7 @@ def build_pokemon_form(
     return {
         "dex_id": dex_id,
         "form_key": form_key,
-        "display_name": form_key,
+        "display_name": slug_titlecase(form_key),
         "form_group": _classify_form_group(form_key),
         "type1": type1,
         "type2": type2,
@@ -782,10 +784,17 @@ def run_transform_production(config_path: str = "config/config.json") -> int:
         raw = read_json(path) or {}
         if raw:
             raw_types.append(raw)
-    type_chart_relations = build_type_chart_relations(raw_types)
-    type_chart_relations.sort(
-        key=lambda r: (r["attacking_type"], r["defending_type"], r["multiplier"])
-    )
+
+    types: List[Dict[str, Any]] = []
+    for raw in raw_types:
+        rec = build_type(raw_type=raw)
+        if rec is None:
+            errors += 1
+            continue
+        types.append(rec)
+    types.sort(key=lambda r: r["type_key"])
+
+    type_chart = build_type_chart_matrix(raw_types)
 
     ensure_dir(DERIVED_DIR)
     atomic_write_json(
@@ -812,8 +821,9 @@ def run_transform_production(config_path: str = "config/config.json") -> int:
     )
     atomic_write_json(
         os.path.join(DERIVED_DIR, "type_chart.json"),
-        {"type_chart_relations": type_chart_relations},
+        {"type_keys": type_chart.get("type_keys"), "matrix": type_chart.get("matrix")},
     )
+    atomic_write_json(os.path.join(DERIVED_DIR, "types.json"), {"types": types})
 
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -832,7 +842,7 @@ def run_transform_production(config_path: str = "config/config.json") -> int:
         f"items={len(items)} "
         f"abilities={len(abilities)} "
         f"natures={len(natures)} "
-        f"type_relations={len(type_chart_relations)} "
+        f"types={len(types)} "
         f"evolution_edges={len(uniq_evo)}"
     )
     if evo_errors:

@@ -1,17 +1,17 @@
 {
   "pokeapi_base_url": "https://pokeapi.co/api/v2",
   "ttl_days": {
-    "pokemon": 7,
-    "species": 7,
-    "evolution_chain": 7,
-    "move": 7,
-    "item": 7,
-    "ability": 7,
-    "nature": 7,
-    "type": 7
+    "pokemon": 365,
+    "species": 365,
+    "evolution_chain": 365,
+    "move": 365,
+    "item": 365,
+    "ability": 365,
+    "nature": 365,
+    "type": 365
   },
   "about_language": "en",
-  "version_groups": ["scarlet-violet"],
+  "version_groups": ["scarlet-violet", "sword-shield"],
   "include_evolutions": true,
   "force_refresh": false
 }

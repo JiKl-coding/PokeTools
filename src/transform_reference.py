@@ -5,7 +5,8 @@ Implements derived models for:
 - Item
 - Ability
 - Nature
-- TypeChart (relations list)
+- Type
+- TypeChart (matrix)
 
 All functions are null-safe and deterministic.
 """
@@ -14,6 +15,8 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
+
+from .naming import slug_titlecase
 
 
 def _normalize_text(value: Optional[str]) -> Optional[str]:
@@ -70,6 +73,7 @@ def build_move(*, raw_move: Dict[str, Any], about_language: str) -> Optional[Dic
 
     return {
         "move_key": move_key,
+        "display_name": slug_titlecase(move_key),
         "type": type_name,
         "category": category,
         "power": power,
@@ -94,10 +98,19 @@ def build_item(*, raw_item: Dict[str, Any], about_language: str) -> Optional[Dic
     category = category if isinstance(category, str) else None
     effect_short = _pick_effect_short(data.get("effect_entries"), about_language)
 
+    sprites = data.get("sprites")
+    icon_url: Optional[str] = None
+    if isinstance(sprites, dict):
+        default = sprites.get("default")
+        if isinstance(default, str) and default.strip():
+            icon_url = default
+
     return {
         "item_key": item_key,
+        "display_name": slug_titlecase(item_key),
         "category": category,
         "effect_short": effect_short,
+        "icon_url": icon_url,
     }
 
 
@@ -117,6 +130,7 @@ def build_ability(
 
     return {
         "ability_key": ability_key,
+        "display_name": slug_titlecase(ability_key),
         "effect_short": effect_short,
     }
 
@@ -138,16 +152,68 @@ def build_nature(*, raw_nature: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
     return {
         "nature_key": nature_key,
+        "display_name": slug_titlecase(nature_key),
         "increased_stat": increased_stat,
         "decreased_stat": decreased_stat,
     }
 
 
-def build_type_chart_relations(raw_types: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Build a complete type chart as a relations list.
+def _pick_type_icon_url(sprites: Any) -> Optional[str]:
+    """Pick a type icon URL per spec/assets.spec.md.
 
-    Output rows: (attacking_type, defending_type, multiplier)
-    Multipliers: 0, 0.5, 1, 2
+    Traverses generation-* keys then game keys lexicographically; the last
+    available name_icon wins.
+    """
+    if not isinstance(sprites, dict):
+        return None
+
+    gen_keys = [k for k in sprites.keys() if isinstance(k, str) and k.startswith("generation-")]
+    gen_keys.sort()
+
+    best: Optional[str] = None
+    for gen_key in gen_keys:
+        gen = sprites.get(gen_key)
+        if not isinstance(gen, dict):
+            continue
+        game_keys = [k for k in gen.keys() if isinstance(k, str)]
+        game_keys.sort()
+        for game_key in game_keys:
+            game = gen.get(game_key)
+            if not isinstance(game, dict):
+                continue
+            icon = game.get("name_icon")
+            if isinstance(icon, str) and icon.strip():
+                best = icon
+
+    return best
+
+
+def build_type(*, raw_type: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build one derived Type record from RawType."""
+    data = raw_type.get("data") or {}
+    if not isinstance(data, dict):
+        return None
+
+    type_key = data.get("name")
+    if not isinstance(type_key, str):
+        return None
+
+    sprites = data.get("sprites")
+    icon_url = _pick_type_icon_url(sprites)
+
+    return {
+        "type_key": type_key,
+        "display_name": slug_titlecase(type_key),
+        "icon_url": icon_url,
+    }
+
+
+def build_type_chart_matrix(raw_types: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Build a complete type chart as a matrix (locked in data-contract.md).
+
+    Returns:
+    - type_keys: list[str] ordered ascending
+    - matrix: list[list[float]] multipliers (0, 0.5, 1, 2)
     """
     types: Dict[str, Dict[str, Any]] = {}
     for raw in raw_types:
@@ -159,8 +225,8 @@ def build_type_chart_relations(raw_types: List[Dict[str, Any]]) -> List[Dict[str
             types[name] = data
 
     type_names = sorted(types.keys())
-    relations: List[Dict[str, Any]] = []
 
+    matrix: List[List[float]] = []
     for atk in type_names:
         dmg_rel = (types[atk].get("damage_relations") or {})
         if not isinstance(dmg_rel, dict):
@@ -182,6 +248,7 @@ def build_type_chart_relations(raw_types: List[Dict[str, Any]]) -> List[Dict[str
             if isinstance(t, dict) and isinstance(t.get("name"), str)
         }
 
+        row: List[float] = []
         for dfn in type_names:
             multiplier: float = 1.0
             if dfn in no_to:
@@ -191,12 +258,8 @@ def build_type_chart_relations(raw_types: List[Dict[str, Any]]) -> List[Dict[str
             elif dfn in half_to:
                 multiplier = 0.5
 
-            relations.append(
-                {
-                    "attacking_type": atk,
-                    "defending_type": dfn,
-                    "multiplier": multiplier,
-                }
-            )
+            row.append(multiplier)
 
-    return relations
+        matrix.append(row)
+
+    return {"type_keys": type_names, "matrix": matrix}
