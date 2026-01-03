@@ -11,7 +11,7 @@
     "type": 7
   },
   "about_language": "en",
-  "version_groups": [],
+  "version_groups": ["scarlet-violet"],
   "include_evolutions": true,
   "force_refresh": false
 }

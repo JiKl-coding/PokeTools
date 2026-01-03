@@ -1,45 +1,40 @@
-PokéTools Fetch MVP
+# PokeTools
 
-Overview
+PokeTools is a small, spec-driven Pokédex data pipeline:
 
-- Fetches and caches raw PokéAPI data for Pokemon forms and their species.
-- Uses file-based cache JSON structure with `_meta` and `data` keys.
+1) **Fetch** raw PokéAPI payloads into `data/raw/**` (cached with TTL)
+2) **Transform** raw JSON into derived datasets in `data/derived/**` (offline, deterministic)
+3) **Export** derived datasets to `data/export/pokedata.xlsx`
 
-Setup
+Thanks to **PokéAPI** (data source) and **pokebase** (Python client).
 
-- Ensure Python 3.10+.
-- Create/activate a virtual environment and install dependencies:
+## Quick start
 
-```
-python -m venv .venv
-.venv\\Scripts\\python.exe -m ensurepip --upgrade
-.venv\\Scripts\\python.exe -m pip install pokebase requests
-```
+1) Install dependencies (from repo root):
 
-Config
-
-- Edit config/config.json to adjust `pokeapi_base_url` and TTLs.
-
-Run
-
-- Fetch first 20 Pokemon forms and their species (Windows):
-
-```
-.venv\\Scripts\\python.exe -m src.main fetch pokemon --limit 20
+```bash
+python -m pip install -e .
 ```
 
-- Force refresh regardless of TTL:
+2) Configure the pipeline:
+- Edit `config/config.json`
+- If you want learnsets populated, set `version_groups` (if empty, learnsets will be empty by design)
 
+3) Run the pipeline:
+
+```bash
+python -m src.main fetch all
+python -m src.main transform production
+python -m src.main export production
 ```
-.venv\\Scripts\\python.exe -m src.main fetch pokemon --limit 20 --force
-```
 
-Cache Files
+Outputs:
+- Raw cache: `data/raw/**`
+- Derived JSON: `data/derived/**`
+- Excel workbook: `data/export/pokedata.xlsx`
 
-- Pokemon: data/raw/pokemon/{form_key}.json
-- Species: data/raw/species/{species_id}.json
+## More docs
 
-Notes
-
-- Atomic writes: temp file + rename to avoid partial writes.
-- Safe filenames: normalized `form_key` to alphanumeric, dash, underscore.
+- Full usage guide: `manual.md`
+- Specs: `spec/` (fetch/transform/export + data contracts)
+- Legacy notes: `development_notes/README.md`
