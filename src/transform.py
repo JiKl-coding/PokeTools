@@ -7,6 +7,8 @@ Implements Transform MVP:
 - Performs no network access
 """
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import os
@@ -73,17 +75,64 @@ def _normalize_text(value: Optional[str]) -> Optional[str]:
     return re.sub(r"\s+", " ", value.replace("\f", " ").replace("\n", " ")).strip()
 
 
-def _pick_about(species_data: Dict[str, Any], about_language: str) -> Optional[str]:
+def _pick_about(
+    species_data: Dict[str, Any],
+    about_language: str,
+    preferred_version_group: Optional[str],
+) -> Optional[str]:
+    """Pick one ABOUT flavor text per spec/transform.spec.md.
+
+    Rules:
+    - Filter by language from config.
+    - Prefer entries matching the first version-group from config.
+    - Fallback to any other available entry (in-language).
+
+    Note: RawSpecies.flavor_text_entries are keyed by `version` (not `version_group`).
+    To keep the transform deterministic without additional inputs, we treat an entry
+    as matching the preferred version-group when its version slug appears as a
+    hyphen-delimited segment within the version-group slug (e.g. `scarlet` matches
+    `scarlet-violet`, but `red` does not match `firered-leafgreen`).
+    """
+
     entries = species_data.get("flavor_text_entries")
     if not isinstance(entries, list):
         return None
 
-    for entry in entries:
-        if not isinstance(entry, dict):
-            continue
-        lang = ((entry.get("language") or {}).get("name"))
-        if lang != about_language:
-            continue
+    def _iter_in_language() -> Iterable[Dict[str, Any]]:
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            lang = ((entry.get("language") or {}).get("name"))
+            if lang != about_language:
+                continue
+            yield entry
+
+    preferred_vg = preferred_version_group or ""
+
+    def _version_matches_group(*, version_name: str, version_group: str) -> bool:
+        if not version_name or not version_group:
+            return False
+        if version_group == version_name:
+            return True
+        if version_group.startswith(version_name + "-"):
+            return True
+        if version_group.endswith("-" + version_name):
+            return True
+        if "-" + version_name + "-" in version_group:
+            return True
+        return False
+
+    if isinstance(preferred_vg, str) and preferred_vg.strip():
+        for entry in _iter_in_language():
+            version_name = ((entry.get("version") or {}).get("name"))
+            if not isinstance(version_name, str) or not version_name:
+                continue
+            if _version_matches_group(version_name=version_name, version_group=preferred_vg):
+                text = _normalize_text(entry.get("flavor_text"))
+                if text:
+                    return text
+
+    for entry in _iter_in_language():
         text = _normalize_text(entry.get("flavor_text"))
         if text:
             return text
@@ -281,6 +330,7 @@ def build_pokemon_form(
     raw_pokemon: Dict[str, Any],
     raw_species: Dict[str, Any],
     about_language: str,
+    preferred_version_group: Optional[str],
 ) -> Optional[Dict[str, Any]]:
     """Build one PokemonForm derived record.
 
@@ -304,7 +354,7 @@ def build_pokemon_form(
     stats = _extract_stats(pokemon_data)
     ability1, ability2, hidden_ability = _extract_abilities(pokemon_data)
     sprite_url, shiny_sprite_url = _pick_sprites(pokemon_data)
-    about = _pick_about(species_data, about_language)
+    about = _pick_about(species_data, about_language, preferred_version_group)
 
     height_dm = pokemon_data.get("height")
     weight_hg = pokemon_data.get("weight")
@@ -343,6 +393,7 @@ def run_transform_extended(config_path: str = "config/config.json") -> int:
     about_language = str(cfg.get("about_language", "en"))
     version_groups = cfg.get("version_groups", [])
     version_groups = [vg for vg in version_groups if isinstance(vg, str)]
+    preferred_version_group = version_groups[0] if version_groups else None
 
     errors = 0
     forms: List[Dict[str, Any]] = []
@@ -373,6 +424,7 @@ def run_transform_extended(config_path: str = "config/config.json") -> int:
             raw_pokemon=raw_pokemon,
             raw_species=raw_species,
             about_language=about_language,
+            preferred_version_group=preferred_version_group,
         )
         if form is None:
             errors += 1
@@ -665,6 +717,7 @@ def run_transform_production(config_path: str = "config/config.json") -> int:
     about_language = str(cfg.get("about_language", "en"))
     version_groups = cfg.get("version_groups", [])
     version_groups = [vg for vg in version_groups if isinstance(vg, str)]
+    preferred_version_group = version_groups[0] if version_groups else None
 
     errors = 0
 
@@ -697,6 +750,7 @@ def run_transform_production(config_path: str = "config/config.json") -> int:
             raw_pokemon=raw_pokemon,
             raw_species=raw_species,
             about_language=about_language,
+            preferred_version_group=preferred_version_group,
         )
         if form is None:
             errors += 1
@@ -904,6 +958,9 @@ def run_transform_mvp(config_path: str = "config/config.json") -> int:
     """Run Transform MVP: PokemonForm + Meta from local raw cache."""
     cfg = load_config(config_path)
     about_language = str(cfg.get("about_language", "en"))
+    version_groups = cfg.get("version_groups", [])
+    version_groups = [vg for vg in version_groups if isinstance(vg, str)]
+    preferred_version_group = version_groups[0] if version_groups else None
 
     errors = 0
     forms: List[Dict[str, Any]] = []
@@ -931,6 +988,7 @@ def run_transform_mvp(config_path: str = "config/config.json") -> int:
             raw_pokemon=raw_pokemon,
             raw_species=raw_species,
             about_language=about_language,
+            preferred_version_group=preferred_version_group,
         )
         if form is None:
             errors += 1

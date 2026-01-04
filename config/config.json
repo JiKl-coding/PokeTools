@@ -11,7 +11,7 @@
     "type": 365
   },
   "about_language": "en",
-  "version_groups": ["scarlet-violet", "sword-shield"],
+  "version_groups": ["scarlet-violet", "sword-shield", "lets-go-pikachu-lets-go-eevee"],
   "include_evolutions": true,
   "force_refresh": false
 }
