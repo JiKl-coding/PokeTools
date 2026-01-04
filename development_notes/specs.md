@@ -1,5 +1,7 @@
 # SPECS for SDD with AI agent (GPT-5.2 at the time of development)
 
+- these spect were used to develop the tool, you do not need to use them, since everything is already in the repo
+
 1. `north-star.md`
    - Defines **why the project exists**, its vision, goals, and non-goals.
    - Sets the overall direction and constraints for all other specs.

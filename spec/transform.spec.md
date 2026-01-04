@@ -119,7 +119,8 @@ Derived models:
 - ABOUT
   - Selected from RawSpecies.flavor_text_entries
   - Filter by language from config
-  - Prefer entries matching main version group when possible
+  - Prefer entries matching first version-group from config
+  - Fallback - use other available flavor_text_entries (in language from config)
 - Sprites
   - Prefer official artwork URLs
   - Fallback to default sprites
