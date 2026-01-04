@@ -38,5 +38,6 @@ Outputs:
 ## More docs
 
 - Full usage guide: `manual.md`
+- Data guide (raw/derived/export overview): `Data_manual.md`
 - Specs: `spec/` (fetch/transform/export + data contracts)
 - Legacy notes: `development_notes/README.md`

@@ -345,8 +345,6 @@ The workbook contains the following sheets:
 - `ABOUT` (string|null)
 - `SPRITE` (string|null)
 - `SHINY_SPRITE` (string|null)
-- `MOVESET_<VG1>` (string|null; semicolon-separated)
-- `MOVESET_<VG2>` ...
 - ...
 
 **Moveset format (summary):**
