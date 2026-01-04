@@ -124,37 +124,9 @@ def _load_types_order() -> tuple[list[str], bool, str]:
     return (order, ignore_rest, mode)
 
 
-def _moveset_map(
-    learnset_entries: List[Dict[str, Any]],
-    version_groups: List[str],
-) -> Dict[str, Dict[str, str]]:
-    """Build {form_key: {version_group: 'a;b;c'}} mapping for Pokemon sheet."""
-    by_form_vg: Dict[str, Dict[str, set[str]]] = {}
-    vg_allow = set(version_groups)
-    for rec in learnset_entries:
-        form_key = rec.get("form_key")
-        vg = rec.get("version_group")
-        move_key = rec.get("move_key")
-        if not isinstance(form_key, str) or not isinstance(vg, str) or \
-           not isinstance(move_key, str):
-            continue
-        if vg not in vg_allow:
-            continue
-        by_form_vg.setdefault(form_key, {}).setdefault(vg, set()).add(move_key)
-
-    out: Dict[str, Dict[str, str]] = {}
-    for form_key, vg_map in by_form_vg.items():
-        out[form_key] = {}
-        for vg, moves in vg_map.items():
-            out[form_key][vg] = ";".join(sorted(moves))
-    return out
-
-
 def run_export_mvp(config_path: str = "config/config.json") -> int:
     """Export MVP: create workbook with Pokemon + Meta sheets."""
     cfg = load_config(config_path)
-    version_groups = cfg.get("version_groups", [])
-    version_groups = [vg for vg in version_groups if isinstance(vg, str)]
 
     forms_path = os.path.join(DERIVED_DIR, "pokemon_forms.json")
     meta_path = os.path.join(DERIVED_DIR, "meta.json")
@@ -199,8 +171,6 @@ def run_export_mvp(config_path: str = "config/config.json") -> int:
         "SPRITE",
         "SHINY_SPRITE",
     ]
-    for vg in version_groups:
-        headers.append(f"MOVESET_{vg}")
     _write_row(ws_pokemon, headers)
 
     for rec in forms:
@@ -229,8 +199,6 @@ def run_export_mvp(config_path: str = "config/config.json") -> int:
             rec.get("sprite_url"),
             rec.get("shiny_sprite_url"),
         ]
-        # MVP: do not compute movesets; emit empty cells.
-        row.extend([None] * len(version_groups))
         _write_row(ws_pokemon, row)
 
     # Sheet: Meta
@@ -264,8 +232,6 @@ def run_export_mvp(config_path: str = "config/config.json") -> int:
 def run_export_extended(config_path: str = "config/config.json") -> int:
     """Export Extended: add Learnsets/Moves/Items/Abilities/Natures/Evolutions/TypeChart/Assets."""
     cfg = load_config(config_path)
-    version_groups = cfg.get("version_groups", [])
-    version_groups = [vg for vg in version_groups if isinstance(vg, str)]
 
     forms_doc = _read_derived(os.path.join(DERIVED_DIR, "pokemon_forms.json"))
     learnsets_doc = _read_derived(os.path.join(DERIVED_DIR, "learnset_entries.json"))
@@ -341,11 +307,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
         "SPRITE",
         "SHINY_SPRITE",
     ]
-    for vg in version_groups:
-        pokemon_headers.append(f"MOVESET_{vg}")
     _write_row(ws_pokemon, pokemon_headers)
-
-    movesets = _moveset_map(learnset_entries, version_groups)
 
     # Row ordering: DEX_ID, FORM_KEY
     forms_sorted = [rec for rec in forms if isinstance(rec, dict)]
@@ -375,11 +337,6 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             rec.get("sprite_url"),
             rec.get("shiny_sprite_url"),
         ]
-        if isinstance(form_key, str):
-            for vg in version_groups:
-                row.append(movesets.get(form_key, {}).get(vg))
-        else:
-            row.extend([None] * len(version_groups))
         _write_row(ws_pokemon, row)
 
     # Sheet: Learnsets
