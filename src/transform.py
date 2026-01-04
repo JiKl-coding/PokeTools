@@ -108,6 +108,42 @@ def _pick_effect_short(entries: Any, language: str) -> Optional[str]:
     return None
 
 
+def _as_nonempty_str(value: Any) -> Optional[str]:
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
+def _find_first_sprite_url(node: Any, preferred_keys: List[str]) -> Optional[str]:
+    """Deterministically find the first non-empty URL under known front-facing sprite keys.
+
+    This intentionally searches nested sprite structures (including versions/animated),
+    while keeping ordering stable (preferred keys first, then DFS by sorted dict keys).
+    """
+
+    if isinstance(node, dict):
+        for key in preferred_keys:
+            url = _as_nonempty_str(node.get(key))
+            if url:
+                return url
+
+        for key in sorted(node.keys()):
+            child = node.get(key)
+            url = _find_first_sprite_url(child, preferred_keys)
+            if url:
+                return url
+        return None
+
+    if isinstance(node, list):
+        for item in node:
+            url = _find_first_sprite_url(item, preferred_keys)
+            if url:
+                return url
+        return None
+
+    return None
+
+
 def _pick_sprites(pokemon_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     sprites = pokemon_data.get("sprites") or {}
     if not isinstance(sprites, dict):
@@ -116,12 +152,23 @@ def _pick_sprites(pokemon_data: Dict[str, Any]) -> Tuple[Optional[str], Optional
     other = sprites.get("other") or {}
     official = (other.get("official-artwork") or {}) if isinstance(other, dict) else {}
 
-    sprite_url = official.get("front_default") or sprites.get("front_default")
-    shiny_url = official.get("front_shiny") or sprites.get("front_shiny")
+    sprite_url = _as_nonempty_str(official.get("front_default")) or _as_nonempty_str(
+        sprites.get("front_default")
+    )
+    shiny_url = _as_nonempty_str(official.get("front_shiny")) or _as_nonempty_str(
+        sprites.get("front_shiny")
+    )
+
+    # If all preferred sprite sources are null, fall back to any available front-facing sprite
+    # (including animated or generation-specific sprites), prioritizing visibility.
+    if sprite_url is None:
+        sprite_url = _find_first_sprite_url(sprites, ["front_default", "front_female"])
+    if shiny_url is None:
+        shiny_url = _find_first_sprite_url(sprites, ["front_shiny", "front_shiny_female"])
 
     return (
-        sprite_url if isinstance(sprite_url, str) else None,
-        shiny_url if isinstance(shiny_url, str) else None,
+        sprite_url,
+        shiny_url,
     )
 
 

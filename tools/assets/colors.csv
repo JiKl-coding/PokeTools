@@ -31,3 +31,6 @@ UI_ACCENT_SUCCESS;Success / positive state;0,176,80;#00B050
 UI_ACCENT_WARNING;Warning / caution;255,193,7;#C89400
 UI_ACCENT_ERROR;Error / danger state;204,0,0;#CC0000
 UI_SHADOW;Shadow base color (use with opacity);0,0,0;#000000
+Pokemon Yellow;Primary yellow used for Pokémon Yellow version;255,204,0;#FFCC00
+Pokemon Blue;Primary blue used for Pokémon Blue version;0,112,192;#0070C0
+Pokemon Green;Primary green used for Pokémon Green version;0,160,80;c

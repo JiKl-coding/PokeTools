@@ -123,6 +123,7 @@ Derived models:
 - Sprites
   - Prefer official artwork URLs
   - Fallback to default sprites
+  - If all preferred sprite sources are null, fall back to any available front-facing sprite (including animated or generation-specific sprites), prioritizing visibility over visual fidelity.
   - Same logic for shiny sprites
 
 ---
