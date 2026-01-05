@@ -17,14 +17,13 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Application.EnableEvents = False
     
     Functions.UnprotectForMacros Pokedex
-    Functions.UnprotectForMacros Lists
 
     DexLogic.HandleGameChange Me        ' refresh PKMN_DEX list (and keep selection valid)
     DexLogic.HandleMoveListRefresh Me   ' refresh PKMN_MOVELIST list (and keep selection valid)
-
+    DexLogic.HandleAbilityRefresh Me    ' refresh ABILITY_1, ABILITY_2 AND HIDDEN_ABILITY description note
+    
 CleanExit:
     Functions.ProtectForMacros Pokedex
-    Functions.ProtectForMacros Lists
     Application.EnableEvents = True
     Exit Sub
 
