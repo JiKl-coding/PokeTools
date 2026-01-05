@@ -52,6 +52,7 @@ End Sub
 
 Public Sub HandleGameChange(ByVal ws As Worksheet)
     On Error GoTo CleanFail
+        
     EnsureCaches
 
     Dim rngGame As Range, rngDex As Range

@@ -9,6 +9,21 @@ Public OWNS_POKEDATA As Boolean
 ' Cached reference to pokedata workbook (kept for this Excel session)
 Private wbPokedata As Workbook
 
+' Password
+Public Const PASS As String = "pokemon"
+
+Public Sub ProtectForMacros(ByVal ws As Worksheet)
+    On Error Resume Next
+    ws.unprotect PASSWORD:=PASS
+    ws.Protect PASSWORD:=PASS, UserInterfaceOnly:=True
+    On Error GoTo 0
+End Sub
+
+Public Sub UnprotectForMacros(ByVal ws As Worksheet)
+    On Error Resume Next
+    ws.unprotect PASSWORD:=PASS
+    On Error GoTo 0
+End Sub
 
 ' Initialize relative paths
 Private Sub InitPaths()

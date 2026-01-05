@@ -15,11 +15,16 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 
     On Error GoTo CleanFail
     Application.EnableEvents = False
+    
+    Functions.UnprotectForMacros Pokedex
+    Functions.UnprotectForMacros Lists
 
     DexLogic.HandleGameChange Me        ' refresh PKMN_DEX list (and keep selection valid)
     DexLogic.HandleMoveListRefresh Me   ' refresh PKMN_MOVELIST list (and keep selection valid)
 
 CleanExit:
+    Functions.ProtectForMacros Pokedex
+    Functions.ProtectForMacros Lists
     Application.EnableEvents = True
     Exit Sub
 
