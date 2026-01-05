@@ -326,20 +326,21 @@ Private Sub SetDexValidationFromArray(ByVal rngDex As Range, ByVal values As Var
     For i = 1 To n
         outRng.Cells(i, 1).value = values(LBound(values) + i - 1)
     Next i
+    
+    Dim src As String
 
     ' Apply validation
     On Error Resume Next
-    rngDex.Validation.Delete
+        src = "=" & outRng.Address(External:=True)   ' => ='Pokedex.xlsm'!Lists!$Z$2:$Z$50 apod.
+        
+        With rngDex.Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, formula1:=src
+            .IgnoreBlank = True
+            .InCellDropdown = True
+        End With
     On Error GoTo 0
 
-    rngDex.Validation.Add _
-        Type:=xlValidateList, _
-        AlertStyle:=xlValidAlertStop, _
-        Operator:=xlBetween, _
-        formula1:="=" & wsLists.name & "!" & outRng.Address(False, False)
-
-    rngDex.Validation.IgnoreBlank = True
-    rngDex.Validation.InCellDropdown = True
 End Sub
 
 Private Function IsInArray(ByVal value As String, ByVal arr As Variant) As Boolean
@@ -512,19 +513,21 @@ Private Sub SetMoveValidationFromArrays(ByVal rngMove As Range, ByVal moves As V
         outMovesRng.Cells(i, 1).value = moves(LBound(moves) + i - 1)
     Next i
 
+    Dim srcMoves As String
+
     ' Apply validation list to PKMN_MOVELIST (moves only)
     On Error Resume Next
-    rngMove.Validation.Delete
+    
+        srcMoves = "=" & outMovesRng.Address(External:=True)
+        
+        With rngMove.Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, formula1:=srcMoves
+            .IgnoreBlank = True
+            .InCellDropdown = True
+        End With
+        
     On Error GoTo 0
-
-    rngMove.Validation.Add _
-        Type:=xlValidateList, _
-        AlertStyle:=xlValidAlertStop, _
-        Operator:=xlBetween, _
-        formula1:="=" & wsLists.name & "!" & outMovesRng.Address(False, False)
-
-    rngMove.Validation.IgnoreBlank = True
-    rngMove.Validation.InCellDropdown = True
 End Sub
 
 Private Function NormalizeMoveText(ByVal s As String) As String
@@ -541,3 +544,102 @@ Private Function NormalizeMoveText(ByVal s As String) As String
 
     NormalizeMoveText = t
 End Function
+
+Public Sub HandleAbilityRefresh(ByVal ws As Worksheet)
+    On Error GoTo CleanFail
+
+    Dim wbPokedata As Workbook
+    Dim wsAbilities As Worksheet
+    Set wbPokedata = Functions.GetPokedataWb
+    Set wsAbilities = wbPokedata.Worksheets("Abilities")
+
+    RefreshAbilityNote ws.Range("ABILITY_1"), wsAbilities
+    RefreshAbilityNote ws.Range("ABILITY_2"), wsAbilities
+    RefreshAbilityNote ws.Range("HIDDEN_ABILITY"), wsAbilities
+    Exit Sub
+
+CleanFail:
+    ' Fail silently
+End Sub
+
+Private Sub RefreshAbilityNote(ByVal rng As Range, ByVal wsAbilities As Worksheet)
+    On Error GoTo CleanFail
+
+    Dim abilityName As String
+    abilityName = Trim$(CStr(rng.Value2))
+
+    ' empty -> clear note
+    If Len(abilityName) = 0 Or abilityName = "-" Then
+        ClearNote rng
+        Exit Sub
+    End If
+
+    Dim desc As String
+    desc = GetAbilityDescription(wsAbilities, abilityName)
+
+    ' no match -> clear note
+    If Len(desc) = 0 Then
+        ClearNote rng
+        Exit Sub
+    End If
+
+    SetNote rng, desc
+    Exit Sub
+
+CleanFail:
+    ' Fail silently
+End Sub
+
+Private Function GetAbilityDescription(ByVal wsAbilities As Worksheet, ByVal abilityName As String) As String
+    On Error GoTo CleanFail
+
+    Dim lastRow As Long
+    lastRow = wsAbilities.Cells(wsAbilities.Rows.Count, "B").End(xlUp).Row
+    If lastRow < 2 Then Exit Function
+
+    Dim rngSearch As Range
+    Set rngSearch = wsAbilities.Range("B1:B" & lastRow)
+
+    Dim f As Range
+    Set f = rngSearch.Find(What:=abilityName, LookIn:=xlValues, LookAt:=xlWhole, _
+                           SearchOrder:=xlByRows, SearchDirection:=xlNext, MatchCase:=False)
+
+    If Not f Is Nothing Then
+        GetAbilityDescription = Trim$(CStr(wsAbilities.Cells(f.Row, "C").Value2))
+    End If
+    Exit Function
+
+CleanFail:
+    ' empty
+End Function
+
+Private Sub ClearNote(ByVal rng As Range)
+    On Error Resume Next
+    If Not rng.Comment Is Nothing Then rng.Comment.Delete
+    On Error GoTo 0
+End Sub
+
+Private Sub SetNote(ByVal rng As Range, ByVal noteText As String)
+    On Error GoTo CleanFail
+
+    ' Delete existing, then add clean
+    If Not rng.Comment Is Nothing Then rng.Comment.Delete
+
+    rng.AddComment Text:=noteText
+    rng.Comment.Visible = False
+
+    ' Format: bold text
+    On Error Resume Next
+    With rng.Comment.Shape
+        .TextFrame.Characters.Font.Bold = True
+        .Fill.Visible = msoTrue
+        .Fill.Solid
+    End With
+    On Error GoTo 0
+
+    Exit Sub
+
+CleanFail:
+    ' Fail silently
+End Sub
+
