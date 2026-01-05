@@ -98,6 +98,14 @@ One row = one Pokémon form.
 - `ABOUT` (string|null)
 - `SPRITE` (string|null)
 - `SHINY_SPRITE` (string|null)
+- `MOVESET_<VG1>` (string|null; semicolon-separated move keys)
+- `MOVESET_<VG2>` ...
+- (one `MOVESET_` column per configured version group)
+
+### Moveset formatting
+- Moveset cell is a single string with move keys separated by `;`
+- No trailing delimiter
+- Sorted alphabetically by move key (deterministic)
 
 ### Row ordering
 - Order by `DEX_ID` ascending, then `FORM_KEY` ascending.
