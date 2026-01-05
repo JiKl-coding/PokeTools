@@ -8,7 +8,7 @@ Private Const IGNORE_IMPORT_MODULES As String = "vbaImport,vbaExport"
 ' Does not import from internal
 Public Sub ImportAllVba()
     Dim srcPath As String
-    srcPath = ThisWorkbook.Path & Application.PathSeparator & "src" & Application.PathSeparator
+    srcPath = ThisWorkbook.path & Application.PathSeparator & "src" & Application.PathSeparator
 
     If Dir(srcPath, vbDirectory) = vbNullString Then
         MsgBox "Folder not found: " & srcPath, vbExclamation
