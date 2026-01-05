@@ -18,7 +18,7 @@ Public Sub ExportAllVba()
     If MsgBox(msg, vbQuestion + vbYesNo, "Export VBA") <> vbYes Then Exit Sub
 
     Dim basePath As String, srcPath As String, internalPath As String
-    basePath = ThisWorkbook.Path & Application.PathSeparator
+    basePath = ThisWorkbook.path & Application.PathSeparator
     srcPath = basePath & "src" & Application.PathSeparator
     internalPath = srcPath & "_internal" & Application.PathSeparator
 

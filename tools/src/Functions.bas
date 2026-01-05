@@ -28,7 +28,7 @@ End Sub
 ' Initialize relative paths
 Private Sub InitPaths()
     Dim rawPath As String
-    rawPath = ThisWorkbook.Path & "\..\data\export\pokedata.xlsx"
+    rawPath = ThisWorkbook.path & "\..\data\export\pokedata.xlsx"
     POKEDATA_PATH = NormalizePath(rawPath)
 End Sub
 
