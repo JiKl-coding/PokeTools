@@ -10,23 +10,14 @@ Attribute VB_Exposed = True
 ' === ThisWorkbook code ===
 Option Explicit
 
-Private Const PASS As String = "pokemon"
-
-
-Private Sub ProtectForMacros(ByVal ws As Worksheet, ByVal pw As String)
-    On Error Resume Next
-    ws.Unprotect PASSWORD:=pw
-    ws.Protect PASSWORD:=pw, UserInterfaceOnly:=True
-    On Error GoTo 0
-End Sub
 
 Private Sub Workbook_Open()
     Functions.CheckPaths
     Functions.EnsurePokedataOpen
     Application.EnableEvents = True
-    ProtectForMacros Pokedex, PASS
-    ProtectForMacros Lists, PASS
-    ProtectForMacros TypeChart, PASS
+    Functions.ProtectForMacros Pokedex
+    Functions.ProtectForMacros Lists
+    Functions.ProtectForMacros TypeChart
 End Sub
 
 Private Sub Workbook_Activate()
@@ -53,5 +44,6 @@ Private Sub Workbook_BeforeClose(Cancel As Boolean)
 
     On Error GoTo 0
 End Sub
+
 
 
