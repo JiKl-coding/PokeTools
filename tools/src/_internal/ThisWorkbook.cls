@@ -15,9 +15,8 @@ Private Sub Workbook_Open()
     Functions.CheckPaths
     Functions.EnsurePokedataOpen
     Application.EnableEvents = True
-    Functions.ProtectForMacros Pokedex
-    Functions.ProtectForMacros Lists
-    Functions.ProtectForMacros TypeChart
+    Functions.ProtectAllSheets
+    Pokedex.Activate
 End Sub
 
 Private Sub Workbook_Activate()
