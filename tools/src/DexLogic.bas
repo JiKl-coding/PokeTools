@@ -145,17 +145,17 @@ Public Sub HandleMoveListRefresh(ByVal ws As Worksheet)
     mLastDexKey(wsKey) = dexKey
 
     ' Build move list
-    Dim moveList As Variant
-    GetMoveListForPokemon gameVersion, pkmn, moveList
+    Dim Movelist As Variant
+    GetMoveListForPokemon gameVersion, pkmn, Movelist
 
     ' Write tmp lists and set validation
-    SetMoveValidationFromArrays rngMove, moveList
+    SetMoveValidationFromArrays rngMove, Movelist
     ' Keep selection valid
     Dim currentMove As String
     currentMove = Trim$(CStr(rngMove.value))
 
-    If Len(currentMove) = 0 Or Not IsInArray(currentMove, moveList) Then
-        rngMove.value = CStr(moveList(LBound(moveList)))
+    If Len(currentMove) = 0 Or Not IsInArray(currentMove, Movelist) Then
+        rngMove.value = CStr(Movelist(LBound(Movelist)))
     End If
 
     Exit Sub
@@ -168,7 +168,7 @@ End Sub
 ' Game / data helpers
 ' =====================================================================================
 
-Private Function NormalizeGameVersion(ByVal s As String) As String
+Public Function NormalizeGameVersion(ByVal s As String) As String
     Dim t As String
     t = Trim$(CStr(s))
 
