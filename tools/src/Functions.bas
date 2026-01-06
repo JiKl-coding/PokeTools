@@ -13,6 +13,9 @@ Private wbPokedata As Workbook
 Public Const PASS As String = "pokemon"
 
 Public Sub ProtectForMacros(ByVal ws As Worksheet)
+    If Settings.Range("PROTECT_SHEETS").value = False Then
+        Exit Sub
+    End If
     On Error Resume Next
     ws.unprotect PASSWORD:=PASS
     ws.Protect PASSWORD:=PASS, UserInterfaceOnly:=True
@@ -23,6 +26,20 @@ Public Sub UnprotectForMacros(ByVal ws As Worksheet)
     On Error Resume Next
     ws.unprotect PASSWORD:=PASS
     On Error GoTo 0
+End Sub
+
+Public Sub ProtectAllSheets()
+    ProtectForMacros Pokedex
+    ProtectForMacros Lists
+    ProtectForMacros TypeChart
+    ProtectForMacros Settings
+End Sub
+
+Public Sub UnprotectAllSheets()
+    UnprotectForMacros Pokedex
+    UnprotectForMacros Lists
+    UnprotectForMacros TypeChart
+    UnprotectForMacros Settings
 End Sub
 
 ' Initialize relative paths

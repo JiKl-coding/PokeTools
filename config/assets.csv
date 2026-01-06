@@ -1,5 +1,7 @@
 IMAGES:
 POKEBALL;https://tr.rbxcdn.com/180DAY-1dc919a83f5116c68ae20f4709eb8e45/420/420/Image/Webp/noFilter
+ITEM_DEFAULT;https://bulbapedia.bulbagarden.net/wiki/File:Bag_artwork.png
+
 
 TYPE_IMAGES:
 NORMAL;https://archives.bulbagarden.net/media/upload/9/95/Normal_icon_SwSh.png
@@ -21,3 +23,13 @@ DARK;https://archives.bulbagarden.net/media/upload/d/d5/Dark_icon_SwSh.png
 STEEL;https://archives.bulbagarden.net/media/upload/0/09/Steel_icon_SwSh.png
 FAIRY;https://archives.bulbagarden.net/media/upload/c/c6/Fairy_icon_SwSh.png
 STELLAR;https://archives.bulbagarden.net/media/upload/b/b9/TeraGem_Stellar.png
+
+ATTACK_TYPE_IMAGES:
+Physical;https://archives.bulbagarden.net/media/upload/thumb/e/e1/PhysicalIC_HOME.png/100px-PhysicalIC_HOME.png
+Special;https://archives.bulbagarden.net/media/upload/thumb/6/68/SpecialIC_HOME.png/100px-SpecialIC_HOME.png
+Status;https://archives.bulbagarden.net/media/upload/thumb/f/f8/StatusIC_HOME.png/100px-StatusIC_HOME.png
+
+ATTACK_TYPE_IMAGES_BLOCK:
+Physical;https://archives.bulbagarden.net/media/upload/c/c4/Special_icon_HOME.png
+Special;https://archives.bulbagarden.net/media/upload/c/c4/Special_icon_HOME.png
+Status;shttps://archives.bulbagarden.net/media/upload/3/34/Status_icon_HOME.png

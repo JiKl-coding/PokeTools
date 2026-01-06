@@ -179,6 +179,7 @@ Private Function NormalizeGameVersion(ByVal s As String) As String
 
     t = Replace(t, " ", "-")
     t = Replace(t, "&", "-")
+    t = Replace(t, "’", "")
 
     ' Collapse multiple hyphens
     Do While InStr(1, t, "--", vbBinaryCompare) > 0
@@ -195,7 +196,6 @@ Private Function NormalizeGameVersion(ByVal s As String) As String
 
     NormalizeGameVersion = t
 End Function
-
 Private Function GetPokemonListForGame(ByVal gameVersion As String) As Variant
     On Error GoTo CleanFail
 

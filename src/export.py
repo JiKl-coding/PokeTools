@@ -13,6 +13,7 @@ Rules:
 from __future__ import annotations
 
 import os
+import csv
 from typing import Any, Dict, List, Optional
 
 from openpyxl import Workbook
@@ -75,6 +76,63 @@ def _read_assets_blocks(path: str) -> list[tuple[str, list[tuple[str, str]]]]:
         blocks.append((current_heading, current_rows))
 
     return blocks
+
+
+def _read_games_map(path: str) -> Optional[dict[str, str]]:
+    """Read config/gamesMap.csv mapping slug -> label.
+
+    Fallback behavior is handled by the caller:
+    - If this file is missing/unreadable, return None.
+
+    Expected content: 2 columns (slug, label), with or without a header.
+    Delimiter may be ',' or ';' (auto-detected).
+    """
+    if not os.path.exists(path):
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            raw = f.read().splitlines()
+    except (OSError, UnicodeError):
+        return None
+
+    lines = [ln for ln in (ln.strip() for ln in raw) if ln]
+    if not lines:
+        return {}
+
+    sample = "\n".join(lines[:5])
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=[",", ";", "\t"])
+    except csv.Error:
+        dialect = csv.get_dialect("excel")
+        # Best-effort: prefer ';' if present in the first non-empty line.
+        if ";" in lines[0] and "," not in lines[0]:
+            dialect.delimiter = ";"  # type: ignore[attr-defined]
+
+    mapping: dict[str, str] = {}
+    try:
+        reader = csv.reader(lines, dialect)
+        for row_index, row in enumerate(reader):
+            if not row:
+                continue
+
+            # Support BOM and allow extra columns; take first two.
+            slug = (row[0] or "").strip().lstrip("\ufeff")
+            label = (row[1] or "").strip() if len(row) > 1 else ""
+
+            # Skip a header row if present.
+            if row_index == 0 and slug.lower() in {"slug", "id", "version_group"}:
+                continue
+            if row_index == 0 and label.lower() in {"label", "name", "display_name"}:
+                continue
+
+            if not slug:
+                continue
+            mapping[slug] = label
+    except csv.Error:
+        return None
+
+    return mapping
 
 
 def _read_derived(path: str) -> Dict[str, Any]:
@@ -625,17 +683,55 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
         _write_row(ws_meta, r)
 
     # Sheet: Assets
-    # Layout: each heading creates a new 2-column block (NAME, ADDRESS), all starting at row 1.
+    # Layout per spec/export.spec.md §4.10:
+    # - each heading creates a new 2-column block (name, address), starting at row 1
+    # - at the end add a new 1-column block "GAMES" listing configured version group labels
     ws_assets = wb.create_sheet("Assets")
     assets_blocks = _read_assets_blocks(os.path.join("config", "assets.csv"))
     for block_index, (heading, rows) in enumerate(assets_blocks):
         start_col = 1 + (block_index * 2)
         ws_assets.cell(row=1, column=start_col, value=heading)
-        ws_assets.cell(row=2, column=start_col, value="name")
-        ws_assets.cell(row=2, column=start_col + 1, value="address")
         for i, (name, address) in enumerate(rows):
-            ws_assets.cell(row=3 + i, column=start_col, value=name)
-            ws_assets.cell(row=3 + i, column=start_col + 1, value=address)
+            ws_assets.cell(row=2 + i, column=start_col, value=name)
+            ws_assets.cell(row=2 + i, column=start_col + 1, value=address)
+
+    # Append final block: GAMES
+    games_block_col = 1 + (len(assets_blocks) * 2)
+    ws_assets.cell(row=1, column=games_block_col, value="GAMES")
+
+    games_map_path = os.path.join("config", "gamesMap.csv")
+    games_map = _read_games_map(games_map_path)
+
+    # Source of truth (IDs): config/config.json -> version_groups (preserve order)
+    version_groups_raw = cfg.get("version_groups")
+    version_group_ids: list[Any] = version_groups_raw if isinstance(version_groups_raw, list) else []
+
+    for i, vg in enumerate(version_group_ids):
+        # Best-effort support for both string-only config and richer dict entries.
+        if isinstance(vg, str):
+            vg_id = vg
+            fallback_label = vg
+        elif isinstance(vg, dict):
+            vg_id = vg.get("id") or vg.get("slug") or vg.get("key")
+            fallback_label = vg.get("name") or vg.get("label") or vg.get("display_name") or vg_id
+        else:
+            continue
+
+        if not isinstance(vg_id, str) or not vg_id.strip():
+            continue
+        if not isinstance(fallback_label, str) or not fallback_label.strip():
+            fallback_label = vg_id
+
+        label = fallback_label
+        if isinstance(games_map, dict):
+            mapped = games_map.get(vg_id)
+            if isinstance(mapped, str) and mapped.strip():
+                label = mapped
+
+        ws_assets.cell(row=2 + i, column=games_block_col, value=label)
+
+    # Add final catch-all entry
+    ws_assets.cell(row=2 + len(version_group_ids), column=games_block_col, value="All")
 
     wb.save(EXPORT_PATH)
     print(f"export extended: wrote {EXPORT_PATH}")

@@ -21,6 +21,8 @@ python -m pip install -e .
 2) Configure the pipeline:
 - Edit `config/config.json`
 - If you want learnsets populated, set `version_groups` (if empty, learnsets will be empty by design)
+    - all version in MANUAL.md
+    - more version means more data and slower excel programs
 
 3) Run the pipeline:
 

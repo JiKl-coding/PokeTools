@@ -248,6 +248,15 @@ Traceability and reproducibility information.
 - rows are grouped by headings (e.g. `IMAGES:`)
 - each heading starts a new column block
 - all column blocks start at row 1
+- at the end add new column block
+- Row 1: GAMES
+- Source of truth (IDs): load all game ids from config/config.json → version-groups (preserve order as defined there)
+- Label mapping: for each game id, resolve label via config/gamesMap.csv (slug → label)
+- Fallback rules:
+    if config/gamesMap.csv is missing / unreadable → use the label from config/config.json (version-groups[].name or equivalent display field)
+    if gamesMap.csv exists but no matching slug row (or label empty) → use the label from config/config.json for that specific game id
+- Output: render a single-column list under GAMES using resolved labels (one per row)
+- Add 'All' at the end of the list
 
 ---
 

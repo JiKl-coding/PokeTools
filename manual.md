@@ -116,6 +116,30 @@ Notes:
 - If `config.version_groups` is `[]`, then **LearnsetEntry output will be empty** by design.
 - Outputs are written to `data/derived/*.json`.
 
+- All versions (01/2026 - based on PokeApi):
+[
+  "scarlet-violet",
+  "legends-arceus",
+  "brilliant-diamond-shining-pearl",
+  "sword-shield",
+  "lets-go-pikachu-lets-go-eevee",
+  "ultra-sun-ultra-moon",
+  "sun-moon",
+  "omega-ruby-alpha-sapphire",
+  "x-y",
+  "black-2-white-2",
+  "black-white",
+  "heartgold-soulsilver",
+  "platinum",
+  "diamond-pearl",
+  "emerald",
+  "ruby-sapphire",
+  "crystal",
+  "gold-silver",
+  "yellow",
+  "red-blue"
+]
+
 ---
 
 ## 3) Export (reads `data/derived/**`, writes `data/export/pokedata.xlsx`)
