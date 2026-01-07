@@ -16,7 +16,7 @@ Sub AssignTypes()
     Dim move As String
     Dim pkmnType1 As String
     Dim pkmnType2 As String
-    Dim moveType As String
+    Dim MoveType As String
 
     ' Local sheet
     Set wsTypeChart = TypeChart
@@ -33,7 +33,7 @@ Sub AssignTypes()
     ' Default outputs
     pkmnType1 = vbNullString
     pkmnType2 = vbNullString
-    moveType = vbNullString
+    MoveType = vbNullString
 
     ' Pokemon lookup: table C:F, return E (col 3) and F (col 4)
     If Len(pokemon) > 0 Then
@@ -43,7 +43,7 @@ Sub AssignTypes()
 
     ' Move lookup: table B:C, return C (col 2)
     If Len(move) > 0 Then
-        moveType = NzText(Application.VLookup(move, wsMoves.Range("B:C"), 2, False)) ' C
+        MoveType = NzText(Application.VLookup(move, wsMoves.Range("B:C"), 2, False)) ' C
     End If
 
     ' Write outputs back (only when found / non-empty as requested)
@@ -52,8 +52,8 @@ Sub AssignTypes()
         wsTypeChart.Range("PKMN_TYPE_2").value = pkmnType2  ' may be empty
     End If
 
-    If moveType <> "" Then
-        wsTypeChart.Range("MOVE_TYPE").value = moveType
+    If MoveType <> "" Then
+        wsTypeChart.Range("MOVE_TYPE").value = MoveType
     End If
 
     Exit Sub
