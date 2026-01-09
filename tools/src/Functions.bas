@@ -98,7 +98,7 @@ End Function
 ' Hide workbook window (keeps workbook open, prevents focus steal / UX jump)
 Private Sub HideWorkbookWindow(ByVal wb As Workbook)
     On Error Resume Next
-    If wb.Windows.Count > 0 Then
+    If wb.Windows.count > 0 Then
         wb.Windows(1).Visible = False
     End If
     On Error GoTo 0
@@ -159,7 +159,7 @@ Public Function GetPokedataWb() As Workbook
 
     ' Bring focus back to tool window (extra safety)
     On Error Resume Next
-    If ThisWorkbook.Windows.Count > 0 Then
+    If ThisWorkbook.Windows.count > 0 Then
         ThisWorkbook.Windows(1).Activate
     Else
         ThisWorkbook.Activate

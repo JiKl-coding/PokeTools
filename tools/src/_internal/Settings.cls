@@ -7,9 +7,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
-Private Sub Worksheet_Change(ByVal Target As Range)
+Private Sub Worksheet_Change(ByVal target As Range)
     ' Sheets protection
-    If Intersect(Target, Me.Range("PROTECT_SHEETS")) Is Nothing Then Exit Sub
+    If Intersect(target, Me.Range("PROTECT_SHEETS")) Is Nothing Then Exit Sub
 
     On Error GoTo CleanFail
     

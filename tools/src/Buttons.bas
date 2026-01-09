@@ -7,12 +7,8 @@ Sub AssignTypes()
     On Error GoTo CleanFail
 
     Dim wsTypeChart As Worksheet
-    Dim wsMoves As Worksheet
-    Dim wsPokemons As Worksheet
-    Dim wbPokedata As Workbook
-
     ' Variables
-    Dim pokemon As String
+    Dim Pokemon As String
     Dim move As String
     Dim pkmnType1 As String
     Dim pkmnType2 As String
@@ -21,13 +17,8 @@ Sub AssignTypes()
     ' Local sheet
     Set wsTypeChart = TypeChart
 
-    ' External workbook + sheets (auto-opens in background if needed)
-    Set wbPokedata = Functions.GetPokedataWb
-    Set wsMoves = wbPokedata.Worksheets("Moves")
-    Set wsPokemons = wbPokedata.Worksheets("Pokemon")
-
     ' Read inputs
-    pokemon = Trim$(CStr(wsTypeChart.Range("PKMN").value))
+    Pokemon = Trim$(CStr(wsTypeChart.Range("PKMN").value))
     move = Trim$(CStr(wsTypeChart.Range("Move").value))
 
     ' Default outputs
@@ -35,15 +26,43 @@ Sub AssignTypes()
     pkmnType2 = vbNullString
     MoveType = vbNullString
 
-    ' Pokemon lookup: table C:F, return E (col 3) and F (col 4)
-    If Len(pokemon) > 0 Then
-        pkmnType1 = NzText(Application.VLookup(pokemon, wsPokemons.Range("C:F"), 3, False)) ' E
-        pkmnType2 = NzText(Application.VLookup(pokemon, wsPokemons.Range("C:F"), 4, False)) ' F
+    Dim pokemonNameCol As Long
+    Dim type1Col As Long
+    Dim type2Col As Long
+    Dim moveNameCol As Long
+    Dim moveTypeCol As Long
+
+    GlobalTables.LoadPokemonTable
+    GlobalTables.LoadMovesTable
+
+    If Not IsEmpty(GlobalTables.PokemonTable) Then
+        pokemonNameCol = GlobalTables.FindHeaderColumn(GlobalTables.PokemonTable, "DISPLAY_NAME")
+        type1Col = GlobalTables.FindHeaderColumn(GlobalTables.PokemonTable, "TYPE1")
+        type2Col = GlobalTables.FindHeaderColumn(GlobalTables.PokemonTable, "TYPE2")
     End If
 
-    ' Move lookup: table B:C, return C (col 2)
-    If Len(move) > 0 Then
-        MoveType = NzText(Application.VLookup(move, wsMoves.Range("B:C"), 2, False)) ' C
+    If Not IsEmpty(GlobalTables.MovesTable) Then
+        moveNameCol = GlobalTables.FindHeaderColumn(GlobalTables.MovesTable, "DISPLAY_NAME")
+        moveTypeCol = GlobalTables.FindHeaderColumn(GlobalTables.MovesTable, "TYPE")
+    End If
+
+    ' Pokemon lookup via cached table
+    If Len(Pokemon) > 0 And pokemonNameCol > 0 Then
+        Dim pokemonRow As Long
+        pokemonRow = GlobalTables.FindRowByValue(GlobalTables.PokemonTable, pokemonNameCol, Pokemon)
+        If pokemonRow > 0 Then
+            If type1Col > 0 Then pkmnType1 = NzText(GlobalTables.PokemonTable(pokemonRow, type1Col))
+            If type2Col > 0 Then pkmnType2 = NzText(GlobalTables.PokemonTable(pokemonRow, type2Col))
+        End If
+    End If
+
+    ' Move lookup via cached table
+    If Len(move) > 0 And moveNameCol > 0 Then
+        Dim MoveRow As Long
+        MoveRow = GlobalTables.FindRowByValue(GlobalTables.MovesTable, moveNameCol, move)
+        If MoveRow > 0 And moveTypeCol > 0 Then
+            MoveType = NzText(GlobalTables.MovesTable(MoveRow, moveTypeCol))
+        End If
     End If
 
     ' Write outputs back (only when found / non-empty as requested)

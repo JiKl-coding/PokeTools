@@ -33,9 +33,9 @@ Public Sub ImportAllVba()
     msg = "Are you sure you want to IMPORT all VBA modules from:" & vbCrLf & vbCrLf & _
           "  " & srcPath & vbCrLf & vbCrLf & _
           "This will DELETE and REPLACE existing:" & vbCrLf & _
-          "  • Standard modules (.bas)" & vbCrLf & _
-          "  • Class modules (.cls)" & vbCrLf & _
-          "  • UserForms (.frm)" & vbCrLf & vbCrLf & _
+          "  ? Standard modules (.bas)" & vbCrLf & _
+          "  ? Class modules (.cls)" & vbCrLf & _
+          "  ? UserForms (.frm)" & vbCrLf & vbCrLf & _
           "Ignored modules:" & vbCrLf & _
           "  " & IGNORE_IMPORT_MODULES & vbCrLf & vbCrLf & _
           "Continue?"
@@ -79,7 +79,7 @@ Private Sub DeleteAllImportableComponents(ByVal vbProj As Object)
     Dim vbComp As Object
 
     ' Iterate backwards (safe removal)
-    For i = vbProj.VBComponents.Count To 1 Step -1
+    For i = vbProj.VBComponents.count To 1 Step -1
         Set vbComp = vbProj.VBComponents(i)
 
         Select Case vbComp.Type
@@ -125,6 +125,7 @@ Private Sub ImportFolderIntoThisWorkbook(ByVal folderPath As String)
 
                     ' Skip protected modules completely (prevents VbaImport1/VbaExport1)
                     If Not IsNameInCsvList(compName, IGNORE_IMPORT_MODULES) Then
+                        RemoveComponentByExactName ThisWorkbook.VBProject, compName
                         ThisWorkbook.VBProject.VBComponents.Import fullPath
                     End If
 
@@ -174,7 +175,7 @@ Private Sub DeleteComponentsByPrefix(ByVal vbProj As Object, ByVal baseName As S
     Dim i As Long
     Dim vbComp As Object
 
-    For i = vbProj.VBComponents.Count To 1 Step -1
+    For i = vbProj.VBComponents.count To 1 Step -1
         Set vbComp = vbProj.VBComponents(i)
 
         If vbComp.Type <> VBEXT_CT_DOCUMENT Then
@@ -261,3 +262,25 @@ Private Function GetFileName(ByVal filePath As String) As String
     p = InStrRev(filePath, Application.PathSeparator)
     If p > 0 Then GetFileName = Mid$(filePath, p + 1) Else GetFileName = filePath
 End Function
+
+' Removes an existing component whose name matches targetName (case-insensitive)
+' Useful to prevent Excel from creating Function1 / Module1 duplicates on import
+Private Sub RemoveComponentByExactName(ByVal vbProj As Object, ByVal targetName As String)
+
+    If Len(targetName) = 0 Then Exit Sub
+
+    Dim i As Long
+    Dim vbComp As Object
+
+    For i = vbProj.VBComponents.count To 1 Step -1
+        Set vbComp = vbProj.VBComponents(i)
+
+        If vbComp.Type <> VBEXT_CT_DOCUMENT Then
+            If StrComp(vbComp.name, targetName, vbTextCompare) = 0 Then
+                vbProj.VBComponents.Remove vbComp
+                Exit Sub
+            End If
+        End If
+    Next i
+End Sub
+

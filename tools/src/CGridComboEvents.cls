@@ -22,20 +22,30 @@ End Sub
 ' Trigger filter updates only on committed changes
 Private Sub Combo_AfterUpdate()
   On Error Resume Next
-  CallByName mParent, "FiltersChanged", VbMethod
+  CallByName mParent, "FilterControlChanged", VbMethod, Combo.name
+  If Err.Number <> 0 Then
+    Err.Clear
+    CallByName mParent, "FiltersChanged", VbMethod
+  End If
   On Error GoTo 0
 End Sub
 
 Private Sub Combo_Click()
   On Error Resume Next
-  CallByName mParent, "FiltersChanged", VbMethod
+  CallByName mParent, "ComboClicked", VbMethod, Combo.name
   On Error GoTo 0
 End Sub
 
-' Typed input: UI-only filtering of dropdown items
+Private Sub Combo_DropButtonClick()
+  On Error Resume Next
+  CallByName mParent, "ComboClicked", VbMethod, Combo.name
+  On Error GoTo 0
+End Sub
+
+' Typed input: UI-only filtering of dropdown items (forms may optionally implement ComboTyped)
 Private Sub Combo_Change()
   On Error Resume Next
-  CallByName mParent, "ComboTyped", VbMethod, Combo.Name, Combo.Text
+  CallByName mParent, "ComboTyped", VbMethod, Combo.name, Combo.Text
   On Error GoTo 0
 End Sub
 

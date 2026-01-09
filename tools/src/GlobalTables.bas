@@ -16,6 +16,7 @@ Public AbilitiesTable As Variant
 Public NaturesTable As Variant
 Public TypeChartTable As Variant
 Public GameversionsTable As Variant
+Public AssetsTable As Variant
 
 Public Sub LoadPokemonTable()
     If TableHasData(PokemonTable) Then Exit Sub
@@ -57,6 +58,11 @@ Public Sub LoadGameversionsTable()
     LoadSheetIntoArray "GAMEVERSIONS", GameversionsTable
 End Sub
 
+Public Sub LoadAssetsTable()
+    If TableHasData(AssetsTable) Then Exit Sub
+    LoadSheetIntoArray "Assets", AssetsTable
+End Sub
+
 Public Sub LoadAllGlobalTables()
     LoadPokemonTable
     LoadLearnsetsTable
@@ -66,7 +72,102 @@ Public Sub LoadAllGlobalTables()
     LoadNaturesTable
     LoadTypeChartTable
     LoadGameversionsTable
+    LoadAssetsTable
 End Sub
+
+Public Function FindHeaderColumn(ByRef tableArr As Variant, ByVal headerName As String) As Long
+    ' Returns 1-based column index for the given header (row 1 comparison, case-insensitive)
+    If IsEmpty(tableArr) Then Exit Function
+
+    Dim headerRow As Long
+    headerRow = LBound(tableArr, 1)
+
+    Dim firstCol As Long
+    Dim lastCol As Long
+    firstCol = LBound(tableArr, 2)
+    lastCol = UBound(tableArr, 2)
+
+    Dim col As Long
+    For col = firstCol To lastCol
+        If StrComp(SafeCellText(tableArr(headerRow, col)), headerName, vbTextCompare) = 0 Then
+            FindHeaderColumn = col
+            Exit Function
+        End If
+    Next col
+End Function
+
+Public Function FindRowByValue(ByRef tableArr As Variant, ByVal columnIndex As Long, _
+                               ByVal targetValue As String) As Long
+    ' Finds the first row (including header) whose column value matches targetValue
+    If IsEmpty(tableArr) Then Exit Function
+
+    Dim normalizedTarget As String
+    normalizedTarget = SafeCellText(targetValue)
+    If Len(normalizedTarget) = 0 Then Exit Function
+
+    Dim firstCol As Long
+    Dim lastCol As Long
+    firstCol = LBound(tableArr, 2)
+    lastCol = UBound(tableArr, 2)
+
+    If columnIndex < firstCol Or columnIndex > lastCol Then Exit Function
+
+    Dim firstRow As Long
+    Dim lastRow As Long
+    firstRow = LBound(tableArr, 1)
+    lastRow = UBound(tableArr, 1)
+
+    Dim r As Long
+    For r = firstRow To lastRow
+        If StrComp(SafeCellText(tableArr(r, columnIndex)), normalizedTarget, vbTextCompare) = 0 Then
+            FindRowByValue = r
+            Exit Function
+        End If
+    Next r
+End Function
+
+Public Function ExtractColumnValues(ByRef tableArr As Variant, ByVal columnIndex As Long, _
+                                    Optional ByVal skipHeader As Boolean = True) As Variant
+    ' Builds a 1-D Variant array with all values from the specified column
+    If IsEmpty(tableArr) Then Exit Function
+
+    Dim firstCol As Long
+    Dim lastCol As Long
+    firstCol = LBound(tableArr, 2)
+    lastCol = UBound(tableArr, 2)
+
+    If columnIndex < firstCol Or columnIndex > lastCol Then Exit Function
+
+    Dim startRow As Long
+    Dim lastRow As Long
+    startRow = LBound(tableArr, 1)
+    lastRow = UBound(tableArr, 1)
+
+    If skipHeader Then
+        startRow = startRow + 1
+    End If
+
+    If startRow > lastRow Then Exit Function
+
+    Dim values() As Variant
+    Dim count As Long
+    count = 0
+
+    Dim r As Long
+    For r = startRow To lastRow
+        count = count + 1
+        If count = 1 Then
+            ReDim values(1 To 1)
+        Else
+            ReDim Preserve values(1 To count)
+        End If
+        values(count) = tableArr(r, columnIndex)
+    Next r
+
+    If count > 0 Then
+        ExtractColumnValues = values
+    End If
+End Function
 
 Public Sub TestData(ByVal tableArr As Variant)
     On Error Resume Next
@@ -130,7 +231,7 @@ Private Function GetSheetTableRange(ByVal ws As Worksheet) As Range
 
     Dim lastRow As Long
     Dim lastCol As Long
-    lastRow = lastRowCell.Row
+    lastRow = lastRowCell.row
     lastCol = lastColCell.Column
 
     Set GetSheetTableRange = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
@@ -138,4 +239,9 @@ End Function
 
 Private Function TableHasData(ByRef tableArr As Variant) As Boolean
     TableHasData = Not IsEmpty(tableArr)
+End Function
+
+Private Function SafeCellText(ByVal valueVariant As Variant) As String
+    If IsError(valueVariant) Or IsNull(valueVariant) Or IsEmpty(valueVariant) Then Exit Function
+    SafeCellText = Trim$(CStr(valueVariant))
 End Function

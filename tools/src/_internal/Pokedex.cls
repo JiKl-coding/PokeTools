@@ -9,9 +9,9 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Option Explicit
 
-Private Sub Worksheet_Change(ByVal Target As Range)
+Private Sub Worksheet_Change(ByVal target As Range)
     ' React only to GAME or PKMN_DEX
-    If Intersect(Target, Union(Me.Range("GAME"), Me.Range("PKMN_DEX"))) Is Nothing Then Exit Sub
+    If Intersect(target, Union(Me.Range("GAME"), Me.Range("PKMN_DEX"))) Is Nothing Then Exit Sub
 
     On Error GoTo CleanFail
     Application.EnableEvents = False
