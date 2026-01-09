@@ -60,6 +60,8 @@ Private WithEvents mBtnApply As MSForms.CommandButton
 Attribute mBtnApply.VB_VarHelpID = -1
 Private WithEvents mBtnClear As MSForms.CommandButton
 Attribute mBtnClear.VB_VarHelpID = -1
+Private WithEvents mBtnClose As MSForms.CommandButton
+Attribute mBtnClose.VB_VarHelpID = -1
 Private mFraHeader As MSForms.Frame
 Private mFraGrid As MSForms.Frame
 
@@ -337,6 +339,19 @@ Private Sub BuildRuntimeUI()
         .Font.Size = UI_FONT_SIZE
     End With
 
+    Dim closeWidth As Single
+    closeWidth = 70
+    Set mBtnClose = Me.Controls.Add("Forms.CommandButton.1", "btnClosePL", True)
+    With mBtnClose
+        .Width = closeWidth
+        .Height = 24
+        .Top = y - 1
+        .Left = Me.InsideWidth - PAD - closeWidth
+        .caption = "Close"
+        .Font.name = UI_FONT_NAME
+        .Font.Size = UI_FONT_SIZE
+    End With
+
     ' Events wiring
     Set mFilterEvents = New Collection
     Dim eT As CGridComboEvents, eA As CGridComboEvents, eG As CGridComboEvents
@@ -392,6 +407,10 @@ End Sub
 
 Private Sub mBtnApply_Click()
     FiltersChanged
+End Sub
+
+Private Sub mBtnClose_Click()
+    Unload Me
 End Sub
 
 Private Sub BuildHeaderLabels()
@@ -1043,12 +1062,24 @@ Private Function CalcRowHeight(ByVal abilitiesText As String) As Single
         lines = 1
     Else
         Dim normalized As String
-        normalized = Replace(abilitiesText, vbNewLine, " ")
+        normalized = Replace$(abilitiesText, vbNewLine, " ")
         lines = (Len(normalized) + CHARS_PER_LINE - 1) \ CHARS_PER_LINE
+        lines = Application.WorksheetFunction.Max(lines, AbilityLineCount(abilitiesText))
         If lines < 1 Then lines = 1
         If lines > 6 Then lines = 6
     End If
     CalcRowHeight = Application.WorksheetFunction.Max(ROW_MIN_H, (ROW_MIN_H - 2) * lines)
+End Function
+
+Private Function AbilityLineCount(ByVal abilitiesText As String) As Long
+    If Len(abilitiesText) = 0 Then
+        AbilityLineCount = 1
+        Exit Function
+    End If
+
+    Dim parts() As String
+    parts = Split(abilitiesText, vbNewLine)
+    AbilityLineCount = (UBound(parts) - LBound(parts)) + 1
 End Function
 
 ' =============================
