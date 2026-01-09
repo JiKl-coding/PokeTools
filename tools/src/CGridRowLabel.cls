@@ -11,10 +11,10 @@ Option Explicit
 
 Private mForm As Movelist
 Private mRowIndex As Long
-Private WithEvents mLbl As MSForms.Label
+Private WithEvents mLbl As MSForms.label
 Attribute mLbl.VB_VarHelpID = -1
 
-Public Sub Init(ByVal frm As Movelist, ByVal lbl As MSForms.Label, ByVal rowIndex As Long)
+Public Sub Init(ByVal frm As Movelist, ByVal lbl As MSForms.label, ByVal rowIndex As Long)
     Set mForm = frm
     Set mLbl = lbl
     mRowIndex = rowIndex

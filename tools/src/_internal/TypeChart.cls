@@ -9,24 +9,24 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Option Explicit
 
-Private Sub Worksheet_Change(ByVal Target As Range)
+Private Sub Worksheet_Change(ByVal target As Range)
     On Error GoTo CleanFail
 
-    Dim type1 As Range
-    Dim type2 As Range
+    Dim Type1 As Range
+    Dim Type2 As Range
 
-    Set type1 = Me.Range("PKMN_TYPE_1")
-    Set type2 = Me.Range("PKMN_TYPE_2")
+    Set Type1 = Me.Range("PKMN_TYPE_1")
+    Set Type2 = Me.Range("PKMN_TYPE_2")
 
     ' Only react when one of the type cells changes
-    If Intersect(Target, Union(type1, type2)) Is Nothing Then Exit Sub
+    If Intersect(target, Union(Type1, Type2)) Is Nothing Then Exit Sub
 
     ' Prevent infinite event loop
     Application.EnableEvents = False
 
     ' If both types are the same and not empty, clear TYPE_2
-    If Len(type1.Value2) > 0 And type1.Value2 = type2.Value2 Then
-        type2.Value2 = vbNullString
+    If Len(Type1.Value2) > 0 And Type1.Value2 = Type2.Value2 Then
+        Type2.Value2 = vbNullString
     End If
 
 CleanExit:

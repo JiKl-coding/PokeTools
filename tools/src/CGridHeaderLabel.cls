@@ -9,13 +9,13 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 
-Public WithEvents HeaderLabel As MSForms.Label
+Public WithEvents HeaderLabel As MSForms.label
 Attribute HeaderLabel.VB_VarHelpID = -1
 
 Private mParent As Object
 Private mColIndex As Long
 
-Public Sub Init(ByVal parentForm As Object, ByVal lbl As MSForms.Label, ByVal colIndex As Long)
+Public Sub Init(ByVal parentForm As Object, ByVal lbl As MSForms.label, ByVal colIndex As Long)
     Set mParent = parentForm
     Set HeaderLabel = lbl
     mColIndex = colIndex

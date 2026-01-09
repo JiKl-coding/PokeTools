@@ -199,86 +199,52 @@ End Function
 Private Function GetPokemonListForGame(ByVal gameVersion As String) As Variant
     On Error GoTo CleanFail
 
-    Dim wbPokedata As Workbook
-    Dim wsPokemon As Worksheet
+    GlobalTables.LoadGameversionsTable
+    If IsEmpty(GlobalTables.GameversionsTable) Then Exit Function
 
-    Set wbPokedata = Functions.GetPokedataWb
-    Set wsPokemon = wbPokedata.Worksheets("Pokemon")
-
-    Dim lastRow As Long
-    lastRow = wsPokemon.Cells(wsPokemon.Rows.Count, "C").End(xlUp).row
-    If lastRow < 2 Then Exit Function
-
-    Dim movesetCol As Long
-    movesetCol = 0
-
-    ' For GAME = All, use Lists!B starting at row 2 as the source
+    Dim headerName As String
     If StrComp(gameVersion, "All", vbTextCompare) = 0 Then
-        Dim wsLists As Worksheet
-        Set wsLists = Lists ' codename
-
-        Dim lastListsRow As Long
-        lastListsRow = wsLists.Cells(wsLists.Rows.Count, "B").End(xlUp).Row
-        If lastListsRow < 2 Then Exit Function
-
-        Dim dictAll As Object
-        Set dictAll = CreateObject("Scripting.Dictionary")
-        dictAll.CompareMode = vbTextCompare
-
-        Dim outAll() As String
-        Dim nAll As Long: nAll = 0
-
-        Dim rL As Long
-        Dim pL As String
-        For rL = 2 To lastListsRow
-            pL = Trim$(CStr(wsLists.Cells(rL, "B").Value))
-            If Len(pL) > 0 And pL <> "0" Then
-                If Not dictAll.Exists(pL) Then
-                    dictAll.Add pL, True
-                    nAll = nAll + 1
-                    ReDim Preserve outAll(1 To nAll)
-                    outAll(nAll) = pL
-                End If
-            End If
-        Next rL
-
-        If nAll = 0 Then Exit Function
-        GetPokemonListForGame = outAll
-        Exit Function
+        headerName = "POKEMON_ALL"
     Else
-        movesetCol = FindMovesetColumn(wsPokemon, gameVersion)
-        If movesetCol = 0 Then Exit Function ' unknown game => no list
+        headerName = "POKEMON_" & gameVersion
     End If
+
+    Dim columnIndex As Long
+    columnIndex = GlobalTables.FindHeaderColumn(GlobalTables.GameversionsTable, headerName)
+    If columnIndex = 0 Then Exit Function
+
+    Dim rawValues As Variant
+    rawValues = GlobalTables.ExtractColumnValues(GlobalTables.GameversionsTable, columnIndex, True)
+    If IsEmpty(rawValues) Then Exit Function
 
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     dict.CompareMode = vbTextCompare
 
-    Dim outArr() As String
+    Dim cleaned() As String
     Dim n As Long
     n = 0
 
-    Dim r As Long
-    Dim p As String, ms As String
-
-    For r = 2 To lastRow
-        p = Trim$(CStr(wsPokemon.Cells(r, "C").value))
-        If Len(p) > 0 Then
-            ' Specific game: include only Pokemon with non-empty MOVESET_<game> cell
-            ms = Trim$(CStr(wsPokemon.Cells(r, movesetCol).value))
-            If Len(ms) > 0 Then
-                If Not dict.Exists(p) Then
-                    dict.Add p, True
-                    n = n + 1
-                    ReDim Preserve outArr(1 To n)
-                    outArr(n) = p
+    Dim i As Long
+    Dim valueText As String
+    For i = LBound(rawValues) To UBound(rawValues)
+        valueText = Trim$(CStr(rawValues(i)))
+        If Len(valueText) > 0 And valueText <> "0" Then
+            If Not dict.Exists(valueText) Then
+                dict.Add valueText, True
+                n = n + 1
+                If n = 1 Then
+                    ReDim cleaned(1 To 1)
+                Else
+                    ReDim Preserve cleaned(1 To n)
                 End If
+                cleaned(n) = valueText
             End If
         End If
-    Next r
+    Next i
 
     If n = 0 Then Exit Function
-    GetPokemonListForGame = outArr
+    GetPokemonListForGame = cleaned
     Exit Function
 
 CleanFail:
@@ -286,40 +252,36 @@ CleanFail:
 End Function
 
 Public Function FindMovesetColumn(ByVal wsPokemon As Worksheet, ByVal gameVersion As String) As Long
-    ' Finds header "MOVESET_<gameVersion>" in row 1
+    ' Compatibility wrapper: column lookup now uses cached Pokemon table, wsPokemon is unused
+    GlobalTables.LoadPokemonTable
+    If IsEmpty(GlobalTables.PokemonTable) Then Exit Function
+
     Dim header As String
     header = "MOVESET_" & gameVersion
 
-    Dim lastCol As Long
-    lastCol = wsPokemon.Cells(1, wsPokemon.Columns.Count).End(xlToLeft).Column
-    If lastCol < 1 Then Exit Function
-
-    Dim c As Long
-    Dim v As String
-    For c = 1 To lastCol
-        v = Trim$(CStr(wsPokemon.Cells(1, c).value))
-        If StrComp(v, header, vbTextCompare) = 0 Then
-            FindMovesetColumn = c
-            Exit Function
-        End If
-    Next c
+    FindMovesetColumn = GlobalTables.FindHeaderColumn(GlobalTables.PokemonTable, header)
 End Function
 
-Private Function FindPokemonRow(ByVal wsPokemon As Worksheet, ByVal pokemonName As String) As Long
+Private Function FindPokemonRow(ByVal pokemonName As String) As Long
+    GlobalTables.LoadPokemonTable
+    If IsEmpty(GlobalTables.PokemonTable) Then Exit Function
+
+    Dim nameCol As Long
+    nameCol = GlobalTables.FindHeaderColumn(GlobalTables.PokemonTable, "DISPLAY_NAME")
+    If nameCol = 0 Then Exit Function
+
+    Dim firstRow As Long
     Dim lastRow As Long
-    lastRow = wsPokemon.Cells(wsPokemon.Rows.Count, "C").End(xlUp).row
-    If lastRow < 2 Then Exit Function
+    firstRow = LBound(GlobalTables.PokemonTable, 1) + 1 ' skip header
+    lastRow = UBound(GlobalTables.PokemonTable, 1)
 
-    Dim rng As Range
-    Set rng = wsPokemon.Range("C1:C" & lastRow)
-
-    Dim f As Range
-    Set f = rng.Find(What:=pokemonName, LookIn:=xlValues, LookAt:=xlWhole, _
-                     SearchOrder:=xlByRows, SearchDirection:=xlNext, MatchCase:=False)
-
-    If Not f Is Nothing Then
-        FindPokemonRow = f.row
-    End If
+    Dim r As Long
+    For r = firstRow To lastRow
+        If StrComp(Trim$(CStr(GlobalTables.PokemonTable(r, nameCol))), pokemonName, vbTextCompare) = 0 Then
+            FindPokemonRow = r
+            Exit Function
+        End If
+    Next r
 End Function
 
 ' =====================================================================================
@@ -335,7 +297,7 @@ Private Sub SetDexValidationFromArray(ByVal rngDex As Range, ByVal values As Var
 
     ' Clear old list
     wsLists.Range(wsLists.Cells(TMP_START_ROW, TMP_COL), _
-                  wsLists.Cells(wsLists.Rows.Count, TMP_COL)).ClearContents
+                  wsLists.Cells(wsLists.Rows.count, TMP_COL)).ClearContents
 
     Dim n As Long
     n = UBound(values) - LBound(values) + 1
@@ -390,45 +352,47 @@ Private Sub GetAllMovesFromLearnsets(ByVal pokemonName As String, _
     defArr(1) = "-"
     outMoves = defArr
 
-    Dim wbPokedata As Workbook
-    Dim wsLearnsets As Worksheet
-    Set wbPokedata = Functions.GetPokedataWb
-    Set wsLearnsets = wbPokedata.Worksheets("Learnsets")
+    GlobalTables.LoadLearnsetsTable
+    If IsEmpty(GlobalTables.LearnsetsTable) Then Exit Sub
 
+    Dim nameCol As Long
+    Dim moveCol As Long
+    nameCol = GlobalTables.FindHeaderColumn(GlobalTables.LearnsetsTable, "DISPLAY_NAME")
+    moveCol = GlobalTables.FindHeaderColumn(GlobalTables.LearnsetsTable, "MOVE_KEY")
+    If nameCol = 0 Or moveCol = 0 Then Exit Sub
+
+    Dim firstRow As Long
     Dim lastRow As Long
-    lastRow = wsLearnsets.Cells(wsLearnsets.Rows.Count, "B").End(xlUp).row
-    If lastRow < 2 Then Exit Sub
+    firstRow = LBound(GlobalTables.LearnsetsTable, 1) + 1
+    lastRow = UBound(GlobalTables.LearnsetsTable, 1)
 
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     dict.CompareMode = vbTextCompare
 
     Dim r As Long
-    Dim p As String, mv As String
+    Dim mv As String
 
-    For r = 2 To lastRow
-        p = Trim$(CStr(wsLearnsets.Cells(r, "B").value))
-        If StrComp(p, pokemonName, vbTextCompare) <> 0 Then GoTo ContinueRow
-
-        mv = NormalizeMoveText(Trim$(CStr(wsLearnsets.Cells(r, "D").value)))
-        If Len(mv) = 0 Then GoTo ContinueRow
-
-        If Not dict.Exists(mv) Then
-            dict.Add mv, True
+    For r = firstRow To lastRow
+        If StrComp(Trim$(CStr(GlobalTables.LearnsetsTable(r, nameCol))), pokemonName, vbTextCompare) = 0 Then
+            mv = NormalizeMoveText(Trim$(CStr(GlobalTables.LearnsetsTable(r, moveCol))))
+            If Len(mv) > 0 Then
+                If Not dict.Exists(mv) Then
+                    dict.Add mv, True
+                End If
+            End If
         End If
-
-ContinueRow:
     Next r
 
-    If dict.Count = 0 Then Exit Sub
+    If dict.count = 0 Then Exit Sub
 
     Dim moves() As String
-    ReDim moves(1 To dict.Count)
+    ReDim moves(1 To dict.count)
 
     Dim i As Long
     i = 1
     Dim key As Variant
-    For Each key In dict.Keys
+    For Each key In dict.keys
         moves(i) = CStr(key)
         i = i + 1
     Next key
@@ -458,21 +422,19 @@ Private Sub GetMoveListForPokemon(ByVal gameVersion As String, ByVal pokemonName
         Exit Sub
     End If
 
-    Dim wbPokedata As Workbook
-    Dim wsPokemon As Worksheet
-    Set wbPokedata = Functions.GetPokedataWb
-    Set wsPokemon = wbPokedata.Worksheets("Pokemon")
+    GlobalTables.LoadPokemonTable
+    If IsEmpty(GlobalTables.PokemonTable) Then Exit Sub
 
     Dim movesetCol As Long
-    movesetCol = FindMovesetColumn(wsPokemon, gameVersion)
+    movesetCol = FindMovesetColumn(Nothing, gameVersion)
     If movesetCol = 0 Then Exit Sub
 
     Dim rowP As Long
-    rowP = FindPokemonRow(wsPokemon, pokemonName)
+    rowP = FindPokemonRow(pokemonName)
     If rowP = 0 Then Exit Sub
 
     Dim movesetRaw As String
-    movesetRaw = Trim$(CStr(wsPokemon.Cells(rowP, movesetCol).value))
+    movesetRaw = Trim$(CStr(GlobalTables.PokemonTable(rowP, movesetCol)))
     If Len(movesetRaw) = 0 Then Exit Sub
 
     Dim parts() As String
@@ -521,7 +483,7 @@ Private Sub SetMoveValidationFromArrays(ByVal rngMove As Range, ByVal moves As V
 
     ' Clear old lists
     wsLists.Range(wsLists.Cells(TMP_MOVE_START_ROW, TMP_MOVE_COL), _
-                  wsLists.Cells(wsLists.Rows.Count, TMP_MOVE_COL)).ClearContents
+                  wsLists.Cells(wsLists.Rows.count, TMP_MOVE_COL)).ClearContents
 
     Dim n As Long
     n = UBound(moves) - LBound(moves) + 1
@@ -572,21 +534,19 @@ End Function
 Public Sub HandleAbilityRefresh(ByVal ws As Worksheet)
     On Error GoTo CleanFail
 
-    Dim wbPokedata As Workbook
-    Dim wsAbilities As Worksheet
-    Set wbPokedata = Functions.GetPokedataWb
-    Set wsAbilities = wbPokedata.Worksheets("Abilities")
+    GlobalTables.LoadAbilitiesTable
+    If IsEmpty(GlobalTables.AbilitiesTable) Then Exit Sub
 
-    RefreshAbilityNote ws.Range("ABILITY_1"), wsAbilities
-    RefreshAbilityNote ws.Range("ABILITY_2"), wsAbilities
-    RefreshAbilityNote ws.Range("HIDDEN_ABILITY"), wsAbilities
+    RefreshAbilityNote ws.Range("ABILITY_1")
+    RefreshAbilityNote ws.Range("ABILITY_2")
+    RefreshAbilityNote ws.Range("HIDDEN_ABILITY")
     Exit Sub
 
 CleanFail:
     ' Fail silently
 End Sub
 
-Private Sub RefreshAbilityNote(ByVal rng As Range, ByVal wsAbilities As Worksheet)
+Private Sub RefreshAbilityNote(ByVal rng As Range)
     On Error GoTo CleanFail
 
     Dim abilityName As String
@@ -599,7 +559,7 @@ Private Sub RefreshAbilityNote(ByVal rng As Range, ByVal wsAbilities As Workshee
     End If
 
     Dim desc As String
-    desc = GetAbilityDescription(wsAbilities, abilityName)
+    desc = GetAbilityDescription(abilityName)
 
     ' no match -> clear note
     If Len(desc) = 0 Then
@@ -614,23 +574,23 @@ CleanFail:
     ' Fail silently
 End Sub
 
-Private Function GetAbilityDescription(ByVal wsAbilities As Worksheet, ByVal abilityName As String) As String
+Private Function GetAbilityDescription(ByVal abilityName As String) As String
     On Error GoTo CleanFail
 
-    Dim lastRow As Long
-    lastRow = wsAbilities.Cells(wsAbilities.Rows.Count, "B").End(xlUp).row
-    If lastRow < 2 Then Exit Function
+    GlobalTables.LoadAbilitiesTable
+    If IsEmpty(GlobalTables.AbilitiesTable) Then Exit Function
 
-    Dim rngSearch As Range
-    Set rngSearch = wsAbilities.Range("B1:B" & lastRow)
+    Dim nameCol As Long
+    Dim descCol As Long
+    nameCol = GlobalTables.FindHeaderColumn(GlobalTables.AbilitiesTable, "DISPLAY_NAME")
+    descCol = GlobalTables.FindHeaderColumn(GlobalTables.AbilitiesTable, "EFFECT_SHORT")
+    If nameCol = 0 Or descCol = 0 Then Exit Function
 
-    Dim f As Range
-    Set f = rngSearch.Find(What:=abilityName, LookIn:=xlValues, LookAt:=xlWhole, _
-                           SearchOrder:=xlByRows, SearchDirection:=xlNext, MatchCase:=False)
+    Dim rowIdx As Long
+    rowIdx = GlobalTables.FindRowByValue(GlobalTables.AbilitiesTable, nameCol, abilityName)
+    If rowIdx = 0 Then Exit Function
 
-    If Not f Is Nothing Then
-        GetAbilityDescription = Trim$(CStr(wsAbilities.Cells(f.row, "C").Value2))
-    End If
+    GetAbilityDescription = Trim$(CStr(GlobalTables.AbilitiesTable(rowIdx, descCol)))
     Exit Function
 
 CleanFail:
