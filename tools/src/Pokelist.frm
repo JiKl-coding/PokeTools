@@ -4,7 +4,7 @@ Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} Pokelist
    ClientHeight    =   8025
    ClientLeft      =   120
    ClientTop       =   465
-   ClientWidth     =   18660
+   ClientWidth     =   23760
    OleObjectBlob   =   "Pokelist.frx":0000
    StartUpPosition =   1  'CenterOwner
 End
@@ -120,8 +120,8 @@ Private mLastGameSel As String
 Private mInFilterUpdate As Boolean
 
 ' Ability caches for fast dropdown refresh
-Private mAbilitiesAll As Object            ' Dictionary as set
 Private mAbilitiesByType As Object         ' Dictionary: type -> Dictionary set
+Private mAbilityLists As Object            ' GAMEVERSIONS ability lists keyed by version
 
 ' Typed filtering caches
 Private mAllTypes As Variant
@@ -134,6 +134,7 @@ Private mTypeOptions As Variant
 Private mGameOptions As Variant
 Private mGameKeyToLabel As Object
 Private mCachesReady As Boolean
+Private mInitStage As String
 
 ' =============================
 ' Form init
@@ -143,33 +144,41 @@ Private Sub UserForm_Initialize()
 
     mInFilterUpdate = True
 
+    SetInitStage "Applying theme"
     Me.BackColor = RGB(204, 0, 0)
     On Error Resume Next
     Me.Font.name = UI_FONT_NAME
     Me.Font.Size = UI_FONT_SIZE
     On Error GoTo 0
 
+    SetInitStage "Column widths"
     InitColumnWidths
+    SetInitStage "Build runtime UI"
     BuildRuntimeUI
 
     Dim defaultGame As String
     defaultGame = DefaultGameValue()
 
+    SetInitStage "Load data"
     LoadData
+    SetInitStage "Populate filters"
     PopulateFilters defaultGame, True
+    SetInitStage "Info label"
     SetInfoLabel
 
     mSortCol = gcPokemon
     mSortAsc = True
 
+    SetInitStage "Render grid"
     RenderGrid
 
     mInFilterUpdate = False
+    SetInitStage vbNullString
     Exit Sub
 
 CleanFail:
     mInFilterUpdate = False
-    MsgBox "Unable to initialize Pokelist: " & Err.Description, vbExclamation
+    MsgBox "Unable to initialize Pokelist" & StageSuffix() & ": " & Err.Description, vbExclamation
 End Sub
 
 Private Sub InitColumnWidths()
@@ -497,6 +506,8 @@ End Sub
 ' Load + filters
 ' =============================
 Private Sub LoadData()
+    On Error GoTo LoadDataFail
+    Trace "LoadData: start"
     EnsureDataCaches
 
     Dim tbl As Variant
@@ -504,12 +515,11 @@ Private Sub LoadData()
     If IsEmpty(tbl) Then
         ReDim mRows(1 To 1)
         mRowCount = 0
+        Trace "LoadData: PokemonTable empty"
         Exit Sub
     End If
 
     ' Ability caches drive the Ability filter combo
-    Set mAbilitiesAll = CreateObject("Scripting.Dictionary")
-    mAbilitiesAll.CompareMode = vbTextCompare
     Set mAbilitiesByType = CreateObject("Scripting.Dictionary")
     mAbilitiesByType.CompareMode = vbTextCompare
 
@@ -519,6 +529,7 @@ Private Sub LoadData()
     curGameKey = GameVersionKey(curGameLabel)
     Dim movesetCol As Long
     movesetCol = MovesetColumnForKey(curGameKey)
+    Trace "LoadData: gameKey=" & curGameKey & " movesetCol=" & CStr(movesetCol)
 
     Dim headerRow As Long
     headerRow = LBound(tbl, 1)
@@ -552,28 +563,24 @@ Private Sub LoadData()
         If includeRow Then
             mRowCount = mRowCount + 1
             Dim pr As PokeRow
-            pr.DexId = CLng(val(Nz(tbl(r, mPokemonCols.DexId))))
+            pr.DexId = SafeToLong(tbl(r, mPokemonCols.DexId))
             pr.Pokemon = displayName
             pr.Form = Nz(tbl(r, mPokemonCols.Form))
             pr.Type1 = Nz(tbl(r, mPokemonCols.Type1))
             pr.Type2 = Nz(tbl(r, mPokemonCols.Type2))
-            pr.HP = CLng(val(Nz(tbl(r, mPokemonCols.HP))))
-            pr.Attack = CLng(val(Nz(tbl(r, mPokemonCols.Attack))))
-            pr.Defense = CLng(val(Nz(tbl(r, mPokemonCols.Defense))))
-            pr.SpAtt = CLng(val(Nz(tbl(r, mPokemonCols.SpAtt))))
-            pr.SpDef = CLng(val(Nz(tbl(r, mPokemonCols.SpDef))))
-            pr.Speed = CLng(val(Nz(tbl(r, mPokemonCols.Speed))))
-            pr.Total = CLng(val(Nz(tbl(r, mPokemonCols.Total))))
+            pr.HP = SafeToLong(tbl(r, mPokemonCols.HP))
+            pr.Attack = SafeToLong(tbl(r, mPokemonCols.Attack))
+            pr.Defense = SafeToLong(tbl(r, mPokemonCols.Defense))
+            pr.SpAtt = SafeToLong(tbl(r, mPokemonCols.SpAtt))
+            pr.SpDef = SafeToLong(tbl(r, mPokemonCols.SpDef))
+            pr.Speed = SafeToLong(tbl(r, mPokemonCols.Speed))
+            pr.Total = SafeToLong(tbl(r, mPokemonCols.Total))
             pr.Ability1 = Nz(tbl(r, mPokemonCols.Ability1))
             pr.Ability2 = Nz(tbl(r, mPokemonCols.Ability2))
             pr.AbilityHidden = Nz(tbl(r, mPokemonCols.AbilityHidden))
             pr.AbilitiesDisplay = BuildAbilitiesText(pr.Ability1, pr.Ability2, pr.AbilityHidden)
 
             mRows(mRowCount) = pr
-
-            AbilCacheAdd mAbilitiesAll, pr.Ability1
-            AbilCacheAdd mAbilitiesAll, pr.Ability2
-            AbilCacheAdd mAbilitiesAll, pr.AbilityHidden
 
             If Len(pr.Type1) > 0 Then AbilCacheAddToType pr.Type1, pr.Ability1, pr.Ability2, pr.AbilityHidden
             If Len(pr.Type2) > 0 Then AbilCacheAddToType pr.Type2, pr.Ability1, pr.Ability2, pr.AbilityHidden
@@ -587,6 +594,12 @@ ContinueRow:
     ElseIf mRowCount < capacity Then
         ReDim Preserve mRows(1 To mRowCount)
     End If
+    Trace "LoadData: finished, rows=" & CStr(mRowCount)
+    Exit Sub
+
+LoadDataFail:
+    Trace "LoadData: ERROR at row=" & CStr(r) & " -> " & Err.Description
+    Err.Raise Err.Number, Err.Source, Err.Description
 End Sub
 
 ' Removed: GetPokemonNamesFromListsO (dataset now uses MOVESET rule directly)
@@ -620,18 +633,18 @@ CleanFail:
 End Function
 
 Private Sub FillPokeRow(ByRef row As PokeRow, ByVal ws As Worksheet, ByVal r As Long)
-    row.DexId = CLng(val(ws.Cells(r, "A").value))
+    row.DexId = SafeToLong(ws.Cells(r, "A").value)
     row.Pokemon = Trim$(CStr(ws.Cells(r, "C").value))
     row.Form = Trim$(CStr(ws.Cells(r, "D").value))
     row.Type1 = Trim$(CStr(ws.Cells(r, "E").value))
     row.Type2 = Trim$(CStr(ws.Cells(r, "F").value))
-    row.HP = CLng(val(ws.Cells(r, "G").value))
-    row.Attack = CLng(val(ws.Cells(r, "H").value))
-    row.Defense = CLng(val(ws.Cells(r, "I").value))
-    row.SpAtt = CLng(val(ws.Cells(r, "J").value))
-    row.SpDef = CLng(val(ws.Cells(r, "K").value))
-    row.Speed = CLng(val(ws.Cells(r, "L").value))
-    row.Total = CLng(val(ws.Cells(r, "M").value))
+    row.HP = SafeToLong(ws.Cells(r, "G").value)
+    row.Attack = SafeToLong(ws.Cells(r, "H").value)
+    row.Defense = SafeToLong(ws.Cells(r, "I").value)
+    row.SpAtt = SafeToLong(ws.Cells(r, "J").value)
+    row.SpDef = SafeToLong(ws.Cells(r, "K").value)
+    row.Speed = SafeToLong(ws.Cells(r, "L").value)
+    row.Total = SafeToLong(ws.Cells(r, "M").value)
     row.Ability1 = Trim$(CStr(ws.Cells(r, "N").value))
     row.Ability2 = Trim$(CStr(ws.Cells(r, "O").value))
     row.AbilityHidden = Trim$(CStr(ws.Cells(r, "P").value))
@@ -666,42 +679,92 @@ Private Sub PopulateFilters(ByVal defaultGame As String, ByVal initial As Boolea
 End Sub
 
 Private Sub PopulateAbilityFilterFromRows()
+    Dim gameKey As String
     Dim typeSel As String
-    typeSel = Trim$(CStr(mCboType.value))
+    Dim baseList As Variant
+    Dim filteredList As Variant
+    Dim i As Long
 
-    Dim src As Object
-    If Len(typeSel) = 0 Or StrComp(typeSel, FILTER_ALL, vbTextCompare) = 0 Then
-        If mAbilitiesAll Is Nothing Then
-            Set src = CreateObject("Scripting.Dictionary")
-            src.CompareMode = vbTextCompare
-        Else
-            Set src = mAbilitiesAll
-        End If
-    Else
-        If mAbilitiesByType.Exists(typeSel) Then
-            Set src = mAbilitiesByType(typeSel)
-        Else
-            Set src = CreateObject("Scripting.Dictionary")
-            src.CompareMode = vbTextCompare
-        End If
-    End If
+    gameKey = GameVersionKey(CleanSelection(mCboGame.value, FILTER_ALL))
+    baseList = AbilityListForGame(gameKey)
+    typeSel = CleanSelection(mCboType.value, FILTER_ALL)
+    filteredList = FilterAbilityListForType(baseList, typeSel)
 
     mCboAbility.Clear
     mCboAbility.AddItem FILTER_ALL
-    ' Collect, sort alphabetically, then add
-    Dim keys As Variant
-    keys = src.keys
-    If Not IsEmpty(keys) Then
-        If IsArray(keys) Then SortStringArrayAsc keys
-        Dim i As Long
-        For i = LBound(keys) To UBound(keys)
-            mCboAbility.AddItem CStr(keys(i))
+
+    If HasArrayValues(filteredList) Then
+        For i = LBound(filteredList) To UBound(filteredList)
+            mCboAbility.AddItem CStr(filteredList(i))
         Next i
     End If
 
     ' Update typed filtering cache
     mAllAbilities = CaptureComboItemsToArray(mCboAbility)
 End Sub
+
+Private Function AbilityListForGame(ByVal gameKey As String) As Variant
+    Dim lookupKey As String
+    lookupKey = gameKey
+    If Len(lookupKey) = 0 Then lookupKey = GAME_KEY_ALL
+
+    If mAbilityLists Is Nothing Then
+        AbilityListForGame = Empty
+        Exit Function
+    End If
+
+    If mAbilityLists.Exists(lookupKey) Then
+        AbilityListForGame = mAbilityLists(lookupKey)
+    ElseIf lookupKey <> GAME_KEY_ALL And mAbilityLists.Exists(GAME_KEY_ALL) Then
+        AbilityListForGame = mAbilityLists(GAME_KEY_ALL)
+    Else
+        AbilityListForGame = Empty
+    End If
+End Function
+
+Private Function FilterAbilityListForType(ByVal baseList As Variant, ByVal typeSel As String) As Variant
+    If Not HasArrayValues(baseList) Then Exit Function
+    If Len(typeSel) = 0 Or StrComp(typeSel, FILTER_ALL, vbTextCompare) = 0 Then
+        FilterAbilityListForType = baseList
+        Exit Function
+    End If
+
+    If mAbilitiesByType Is Nothing Then
+        FilterAbilityListForType = baseList
+        Exit Function
+    End If
+
+    If Not mAbilitiesByType.Exists(typeSel) Then
+        FilterAbilityListForType = baseList
+        Exit Function
+    End If
+
+    Dim typeDict As Object
+    Set typeDict = mAbilitiesByType(typeSel)
+
+    Dim results() As String
+    Dim count As Long
+    Dim i As Long
+    For i = LBound(baseList) To UBound(baseList)
+        Dim abilityName As String
+        abilityName = CStr(baseList(i))
+        If typeDict.Exists(abilityName) Then
+            count = count + 1
+            If count = 1 Then
+                ReDim results(1 To 1)
+            Else
+                ReDim Preserve results(1 To count)
+            End If
+            results(count) = abilityName
+        End If
+    Next i
+
+    If count = 0 Then
+        FilterAbilityListForType = baseList
+    Else
+        FilterAbilityListForType = results
+    End If
+End Function
 
 ' Simple in-place ascending sort for string array (1-D Variant)
 Private Sub SortStringArrayAsc(ByRef arr As Variant)
@@ -923,37 +986,55 @@ End Function
 ' =============================
 Private Sub RenderGrid()
     Dim prevSU As Boolean
+    Dim filteredIdx() As Long
+    Dim y As Single
+    Dim i As Long
+    Dim idx As Long
+    Dim abilityText As String
+    Dim rh As Single
+
+    On Error GoTo RenderGridFail
+
     prevSU = Application.ScreenUpdating
+
     On Error Resume Next
     Application.ScreenUpdating = False
-    On Error GoTo 0
+    On Error GoTo RenderGridFail
 
     mFraGrid.Visible = False
     ClearGridRows
     Set mRowEvents = New Collection
-    If mRowCount <= 0 Then Exit Sub
+    If mRowCount <= 0 Then GoTo CleanExit
 
-    Dim filteredIdx() As Long
     filteredIdx = GetFilteredIndices()
-    If UBound(filteredIdx) = 0 Then Exit Sub
+    If UBound(filteredIdx) = 0 Then GoTo CleanExit
 
     SortIndices filteredIdx, 1, UBound(filteredIdx)
+    Trace "RenderGrid: filtered count=" & CStr(UBound(filteredIdx))
 
-    Dim y As Single: y = 2
-    Dim i As Long
+    y = 2
     For i = 1 To UBound(filteredIdx)
-        Dim idx As Long: idx = filteredIdx(i)
-        Dim rh As Single: rh = CalcRowHeight(mRows(idx).AbilitiesDisplay)
+        idx = filteredIdx(i)
+        abilityText = mRows(idx).AbilitiesDisplay
+        rh = CalcRowHeight(abilityText)
+        Trace "RenderGrid: idx=" & CStr(idx) & " rh=" & CStr(rh) & " abilityLen=" & CStr(Len(abilityText))
         AddGridRow idx, y, rh
+        Trace "RenderGrid: added idx=" & CStr(idx) & " y=" & CStr(y)
         y = y + rh
     Next i
 
     mFraGrid.ScrollHeight = y + 4
     mFraGrid.Visible = True
 
+CleanExit:
     On Error Resume Next
     Application.ScreenUpdating = prevSU
     On Error GoTo 0
+    Exit Sub
+
+RenderGridFail:
+    Trace "RenderGrid: ERROR -> " & Err.Description & " (i=" & CStr(i) & ", idx=" & CStr(idx) & ")"
+    Resume CleanExit
 End Sub
 
 Private Sub ClearGridRows()
@@ -1103,18 +1184,18 @@ End Sub
 
 Private Function SortKeyForIndex(ByVal i As Long) As Variant
     Select Case mSortCol
-        Case gcDexId: SortKeyForIndex = CLng(mRows(i).DexId)
+        Case gcDexId: SortKeyForIndex = SafeToLong(mRows(i).DexId)
         Case gcPokemon: SortKeyForIndex = LCase$(mRows(i).Pokemon)
         Case gcForm: SortKeyForIndex = LCase$(mRows(i).Form)
         Case gcType1: SortKeyForIndex = LCase$(mRows(i).Type1)
         Case gcType2: SortKeyForIndex = LCase$(mRows(i).Type2)
-        Case gcHP: SortKeyForIndex = CLng(mRows(i).HP)
-        Case gcAtk: SortKeyForIndex = CLng(mRows(i).Attack)
-        Case gcDef: SortKeyForIndex = CLng(mRows(i).Defense)
-        Case gcSpA: SortKeyForIndex = CLng(mRows(i).SpAtt)
-        Case gcSpD: SortKeyForIndex = CLng(mRows(i).SpDef)
-        Case gcSpe: SortKeyForIndex = CLng(mRows(i).Speed)
-        Case gcTotal: SortKeyForIndex = CLng(mRows(i).Total)
+        Case gcHP: SortKeyForIndex = SafeToLong(mRows(i).HP)
+        Case gcAtk: SortKeyForIndex = SafeToLong(mRows(i).Attack)
+        Case gcDef: SortKeyForIndex = SafeToLong(mRows(i).Defense)
+        Case gcSpA: SortKeyForIndex = SafeToLong(mRows(i).SpAtt)
+        Case gcSpD: SortKeyForIndex = SafeToLong(mRows(i).SpDef)
+        Case gcSpe: SortKeyForIndex = SafeToLong(mRows(i).Speed)
+        Case gcTotal: SortKeyForIndex = SafeToLong(mRows(i).Total)
         Case gcAbilities: SortKeyForIndex = LCase$(mRows(i).AbilitiesDisplay)
         Case Else: SortKeyForIndex = LCase$(mRows(i).Pokemon)
     End Select
@@ -1123,9 +1204,12 @@ End Function
 Private Function CompareKeys(ByVal a As Variant, ByVal b As Variant) As Long
     Dim r As Long
     If IsNumeric(a) And IsNumeric(b) Then
-        If CLng(a) < CLng(b) Then
+        Dim aLong As Long, bLong As Long
+        aLong = SafeToLong(a)
+        bLong = SafeToLong(b)
+        If aLong < bLong Then
             r = -1
-        ElseIf CLng(a) > CLng(b) Then
+        ElseIf aLong > bLong Then
             r = 1
         Else
             r = 0
@@ -1213,6 +1297,7 @@ Private Sub EnsureDataCaches()
     BuildMovesetColumnMap
     BuildTypeOptions
     BuildGameOptions
+    BuildAbilityLists
 
     mCachesReady = True
 End Sub
@@ -1306,6 +1391,81 @@ Private Sub BuildTypeOptions()
     End If
 End Sub
 
+Private Sub BuildAbilityLists()
+    Set mAbilityLists = CreateObject("Scripting.Dictionary")
+    mAbilityLists.CompareMode = vbTextCompare
+
+    Dim tbl As Variant
+    tbl = GlobalTables.GameversionsTable
+    If IsEmpty(tbl) Then Exit Sub
+
+    Dim headerRow As Long
+    headerRow = LBound(tbl, 1)
+    Dim firstCol As Long
+    firstCol = LBound(tbl, 2)
+    Dim lastCol As Long
+    lastCol = UBound(tbl, 2)
+
+    Dim c As Long
+    For c = firstCol To lastCol
+        Dim header As String
+        header = Nz(tbl(headerRow, c))
+        Dim listKey As String
+        listKey = AbilityListKeyFromHeader(header)
+        If Len(listKey) = 0 Then GoTo ContinueCol
+
+        Dim values As Variant
+        values = ExtractAbilityColumnValues(tbl, c, headerRow)
+        If HasArrayValues(values) Then
+            mAbilityLists(listKey) = values
+        End If
+ContinueCol:
+    Next c
+End Sub
+
+Private Function AbilityListKeyFromHeader(ByVal header As String) As String
+    If StrComp(header, "ABILITIES_ALL", vbTextCompare) = 0 Then
+        AbilityListKeyFromHeader = GAME_KEY_ALL
+    ElseIf Left$(header, 10) = "ABILITIES_" Then
+        Dim suffix As String
+        suffix = Mid$(header, 11)
+        Dim key As String
+        key = GameVersionKey(suffix)
+        If Len(key) > 0 And StrComp(key, GAME_KEY_ALL, vbTextCompare) <> 0 Then
+            AbilityListKeyFromHeader = key
+        End If
+    End If
+End Function
+
+Private Function ExtractAbilityColumnValues(ByRef tbl As Variant, ByVal columnIndex As Long, ByVal headerRow As Long) As Variant
+    Dim firstRow As Long
+    firstRow = headerRow + 1
+    Dim lastRow As Long
+    lastRow = UBound(tbl, 1)
+    If firstRow > lastRow Then Exit Function
+
+    Dim arr() As String
+    Dim count As Long
+    Dim r As Long
+    For r = firstRow To lastRow
+        Dim valueText As String
+        valueText = Nz(tbl(r, columnIndex))
+        If Len(valueText) > 0 Then
+            count = count + 1
+            If count = 1 Then
+                ReDim arr(1 To 1)
+            Else
+                ReDim Preserve arr(1 To count)
+            End If
+            arr(count) = valueText
+        End If
+    Next r
+
+    If count > 0 Then
+        ExtractAbilityColumnValues = arr
+    End If
+End Function
+
 Private Sub PopulateGameCombo(ByVal desiredSelection As String)
     Dim target As String
     target = ResolveGameLabel(desiredSelection)
@@ -1390,8 +1550,7 @@ End Function
 
 Private Sub BuildGameOptions()
     mGameOptions = Empty
-    Set mGameKeyToLabel = CreateObject("Scripting.Dictionary")
-    mGameKeyToLabel.CompareMode = vbTextCompare
+    Set mGameKeyToLabel = Nothing
 
     If BuildGameOptionsFromAssetsTable() Then Exit Sub
 
@@ -1414,21 +1573,15 @@ Private Sub BuildGameOptions()
     For c = firstCol To lastCol
         Dim header As String
         header = Nz(tbl(headerRow, c))
+        If StrComp(header, "POKEMON_ALL", vbTextCompare) = 0 Then GoTo ContinueCol
         If Left$(header, 8) = "POKEMON_" Then
             Dim suffix As String
             suffix = Mid$(header, 9)
             If Len(suffix) > 0 Then
-                Dim label As String
-                label = DexLogic.DisplayNameFromGameKey(suffix)
-                If Len(label) = 0 Then label = suffix
-                If Not dict.Exists(label) Then dict.Add label, True
-                Dim key As String
-                key = GameVersionKey(label)
-                If Len(key) > 0 And StrComp(key, GAME_KEY_ALL, vbTextCompare) <> 0 Then
-                    If Not mGameKeyToLabel.Exists(key) Then mGameKeyToLabel.Add key, label
-                End If
+                If Not dict.Exists(suffix) Then dict.Add suffix, True
             End If
         End If
+ContinueCol:
     Next c
 
     If dict.count = 0 Then Exit Sub
@@ -1436,6 +1589,7 @@ Private Sub BuildGameOptions()
 End Sub
 
 Private Function BuildGameOptionsFromAssetsTable() As Boolean
+    GlobalTables.LoadAssetsTable
     Dim tbl As Variant
     tbl = GlobalTables.AssetsTable
     If IsEmpty(tbl) Then Exit Function
@@ -1451,6 +1605,9 @@ Private Function BuildGameOptionsFromAssetsTable() As Boolean
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     dict.CompareMode = vbTextCompare
+
+    Set mGameKeyToLabel = CreateObject("Scripting.Dictionary")
+    mGameKeyToLabel.CompareMode = vbTextCompare
 
     Dim i As Long
     For i = LBound(values) To UBound(values)
@@ -1470,8 +1627,19 @@ Private Function BuildGameOptionsFromAssetsTable() As Boolean
 ContinueRow:
     Next i
 
-    If dict.count = 0 Then Exit Function
-    mGameOptions = DictionaryToSortedArray(dict)
+    If dict.count = 0 Then
+        Set mGameKeyToLabel = Nothing
+        Exit Function
+    End If
+
+    Dim arr As Variant
+    arr = DictionaryToSortedArray(dict)
+    If IsEmpty(arr) Then
+        Set mGameKeyToLabel = Nothing
+        Exit Function
+    End If
+
+    mGameOptions = arr
     BuildGameOptionsFromAssetsTable = True
 End Function
 
@@ -1499,4 +1667,36 @@ Private Function Nz(ByVal v As Variant) As String
     Else
         Nz = Trim$(CStr(v))
     End If
+End Function
+
+Private Function SafeToLong(ByVal value As Variant) As Long
+    On Error GoTo CleanZero
+    Dim text As String
+    text = Nz(value)
+    If Len(text) = 0 Then
+        SafeToLong = 0
+    ElseIf IsNumeric(text) Then
+        SafeToLong = CLng(CDbl(text))
+    Else
+        Trace "SafeToLong: coercing non-numeric value '" & text & "'"
+        SafeToLong = CLng(Val(text))
+    End If
+    Exit Function
+CleanZero:
+    SafeToLong = 0
+End Function
+
+Private Sub Trace(ByVal message As String)
+    On Error Resume Next
+    Debug.Print "[Pokelist] " & message
+    On Error GoTo 0
+End Sub
+
+Private Sub SetInitStage(ByVal detail As String)
+    mInitStage = detail
+    If Len(detail) > 0 Then Trace "Stage -> " & detail
+End Sub
+
+Private Function StageSuffix() As String
+    If Len(mInitStage) > 0 Then StageSuffix = " [" & mInitStage & "]"
 End Function

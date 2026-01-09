@@ -9,12 +9,12 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 
-Private mForm As Movelist
+Private mForm As Object
 Private mRowIndex As Long
 Private WithEvents mLbl As MSForms.label
 Attribute mLbl.VB_VarHelpID = -1
 
-Public Sub Init(ByVal frm As Movelist, ByVal lbl As MSForms.label, ByVal rowIndex As Long)
+Public Sub Init(ByVal frm As Object, ByVal lbl As MSForms.label, ByVal rowIndex As Long)
     Set mForm = frm
     Set mLbl = lbl
     mRowIndex = rowIndex
