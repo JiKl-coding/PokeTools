@@ -260,3 +260,65 @@ Derived models:
 - No team validation
 
 These belong to export or frontend layers.
+
+---
+
+
+---
+
+## X. GAMEVERSIONS List Derivation (Display Names)
+
+### Overview
+`GAMEVERSIONS` lists are derived during the **export phase** and contain **display names**.
+
+The following rules are **locked and deterministic**.
+
+### Sources of truth
+- Derived `LearnsetEntry`: used to determine per-version-group sets for Pokémon forms and moves.
+- Derived `PokemonForm`: used to translate `form_key` → `display_name` and derive ability sets.
+- Derived `Move`: used to translate `move_key` → `display_name`.
+- Derived `Ability`: used to translate `ability_key` → `display_name`.
+- Derived `Item`: used to translate `item_key` → `display_name`.
+- Raw Item `game_indices`: used to determine item availability by version (requires mapping).
+
+### Rules (set membership)
+
+#### Pokémon forms (`POKEMON_<vg>`)
+A Pokémon form is in version group **VG** if:
+- at least one `LearnsetEntry` exists for `(form_key, VG)`
+
+Export value:
+- `PokemonForm.display_name`
+
+#### Moves (`MOVES_<vg>`)
+A move is in version group **VG** if:
+- it appears in at least one `LearnsetEntry` for that VG
+
+Export value:
+- `Move.display_name`
+
+#### Abilities (`ABILITIES_<vg>`)
+An ability is in version group **VG** if:
+- it is assigned (ability1 / ability2 / hidden_ability)
+  to at least one Pokémon form that is in `POKEMON_<vg>`
+
+Export value:
+- `Ability.display_name`
+
+#### Items (`ITEMS_<vg>`)
+An item is in version group **VG** if:
+- any raw item `game_indices[].version.name`
+  maps (via config) to a version belonging to VG
+
+Export value:
+- `Item.display_name`
+
+A static mapping `version -> version_group` is required.
+
+### Output guarantees
+- No duplicates within a list/column.
+- Values inside each list are sorted alphabetically (case-insensitive).
+- Version groups follow the configuration order.
+- Derivation does not mutate or extend derived domain models.
+
+---

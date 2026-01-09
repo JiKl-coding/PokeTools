@@ -450,3 +450,33 @@ The workbook contains the following sheets:
 
 ---
 
+
+---
+
+
+---
+
+## 2.X GameVersions Availability Lists (Derived, Export-only)
+
+This project materializes **game version group availability** as dedicated **Excel lists**
+in the `GAMEVERSIONS` sheet.
+
+Availability is **not** stored as per-entity flags (e.g. `available_in_vgs`) on derived
+domain models (PokemonForm, Move, Ability, Item). This avoids redundancy and keeps
+domain models stable.
+
+### Purpose
+- Provide fast, precomputed lists for Excel Data Validation dropdowns and VBA.
+- Avoid deriving availability dynamically in client code.
+
+### List values
+Each availability list contains **display names** (not keys/slugs).
+
+**Assumption (locked):**
+- Within each list, `display_name` values are unique (no duplicates).
+- Client lookups are performed by `display_name`.
+
+If uniqueness is ever violated in the future, the contract must be revised to include
+keys (e.g. `display_name (key)`), but for the current dataset this is not necessary.
+
+---

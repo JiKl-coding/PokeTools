@@ -279,3 +279,62 @@ Production mode must export all sheets listed in section 3 and must fail fast if
 - No damage calc / teambuilder logic
 
 Those belong to other layers.
+
+---
+
+
+---
+
+## X. GAMEVERSIONS Sheet (Availability Lists)
+
+### Purpose
+The `GAMEVERSIONS` sheet provides precomputed availability lists per version group,
+optimized for **Excel Data Validation** dropdowns and simple VBA checks.
+
+### Structure
+- One sheet: `GAMEVERSIONS`
+- Each column represents one availability list.
+- Each list is vertical (one value per row).
+- Row 1 contains column headers.
+- Data starts at row 2.
+- Lists may have different lengths; shorter lists leave empty cells.
+
+### Column naming convention
+
+For each entity type:
+
+- `MOVES_ALL`
+- `POKEMON_ALL`
+- `ABILITIES_ALL`
+- `ITEMS_ALL`
+
+And for each version group `<vg>`:
+
+- `MOVES_<vg>`
+- `POKEMON_<vg>`
+- `ABILITIES_<vg>`
+- `ITEMS_<vg>`
+
+Where `<vg>` is the version group slug (e.g. `scarlet-violet`).
+
+### Values
+Each column contains **display names** (not keys/slugs).
+
+**Assumption (locked):**
+- Within each column, display names are unique (no duplicates).
+- Downstream formulas / VBA lookups operate by display name.
+
+### Ordering
+- Columns are generated in the following order:
+  1. ALL lists
+  2. Version-group-specific lists, following config order
+- Values inside each column are sorted alphabetically (case-insensitive).
+
+### Guarantees
+- No duplicates within a column.
+- Deterministic output across runs.
+- Availability data is not duplicated in other sheets.
+
+.
+
+---
