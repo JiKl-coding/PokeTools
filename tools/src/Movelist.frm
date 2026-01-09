@@ -482,15 +482,6 @@ Public Sub ComboClicked(ByVal ctrlName As String)
     HighlightComboText target
 End Sub
 
-Private Sub HighlightComboText(ByRef cbo As MSForms.ComboBox)
-    If cbo Is Nothing Then Exit Sub
-    On Error Resume Next
-    cbo.SelStart = 0
-    cbo.SelLength = Len(cbo.Text)
-    cbo.DropDown
-    On Error GoTo 0
-End Sub
-
 ' =============================
 ' Context + info
 ' =============================
@@ -594,25 +585,6 @@ Private Sub PopulateTypeCombo()
     EnsureComboSelection mCboType, FILTER_ALL
 End Sub
 
-Private Sub EnsureComboSelection(ByRef cbo As MSForms.ComboBox, ByVal desiredValue As String)
-    Dim target As String
-    target = CleanSelection(desiredValue, FILTER_ALL)
-
-    Dim i As Long
-    For i = 0 To cbo.ListCount - 1
-        If StrComp(CStr(cbo.List(i)), target, vbTextCompare) = 0 Then
-            cbo.ListIndex = i
-            Exit Sub
-        End If
-    Next i
-
-    If cbo.ListCount > 0 Then
-        cbo.ListIndex = 0
-    Else
-        cbo.value = target
-    End If
-End Sub
-
 Private Function DefaultGameValue() As String
     On Error GoTo CleanFail
     DefaultGameValue = CleanSelection(Pokedex.Range("GAME").value, FILTER_ALL)
@@ -635,41 +607,6 @@ Private Sub UpdateContextCells(ByVal Pokemon As String, ByVal game As String)
     Pokedex.Range("GAME").value = game
     On Error GoTo 0
 End Sub
-
-Private Function CleanSelection(ByVal rawValue As Variant, ByVal fallback As String) As String
-    If IsError(rawValue) Or IsNull(rawValue) Then
-        CleanSelection = fallback
-        Exit Function
-    End If
-
-    Dim scalar As Variant
-    scalar = rawValue
-
-    If IsArray(scalar) Then
-        Dim lb1 As Long, lb2 As Long
-        lb1 = LBound(scalar, 1)
-        lb2 = LBound(scalar, 2)
-        On Error Resume Next
-        scalar = scalar(lb1, lb2)
-        On Error GoTo 0
-    End If
-
-    If IsError(scalar) Then GoTo CleanFallback
-
-    Dim t As String
-    On Error GoTo CleanFallback
-    t = Trim$(CStr(scalar))
-    On Error GoTo 0
-    If Len(t) = 0 Then
-        CleanSelection = fallback
-    Else
-        CleanSelection = t
-    End If
-    Exit Function
-
-CleanFallback:
-    CleanSelection = fallback
-End Function
 
 Private Function ResolveGameLabel(ByVal rawValue As String) As String
     Dim cleaned As String
@@ -1257,16 +1194,6 @@ End Sub
 
 Private Function pokemonKey(ByVal name As String) As String
     pokemonKey = LCase$(Trim$(name))
-End Function
-
-Private Function GameVersionKey(ByVal value As String) As String
-    Dim norm As String
-    norm = DexLogic.NormalizeGameVersion(CleanSelection(value, FILTER_ALL))
-    If Len(norm) = 0 Or StrComp(norm, FILTER_ALL, vbTextCompare) = 0 Then
-        GameVersionKey = GAME_KEY_ALL
-    Else
-        GameVersionKey = LCase$(norm)
-    End If
 End Function
 
 Private Function PokemonGameKey(ByVal pokemonKey As String, ByVal versionKey As String) As String
