@@ -16,6 +16,8 @@ Attribute VB_Exposed = False
 
 
 
+
+
 '===============================
 ' UserForm: Movelist
 ' Custom Grid (Label + Frame)
@@ -90,7 +92,6 @@ Private mLastPokemon As String
 Private mLastGameSel As String
 Private mInFilterUpdate As Boolean
 
-Private mInitStage As String
 
 ' Cached data (global tables)
 Private mMoveMetaByKey As Object
@@ -110,47 +111,37 @@ Private Sub UserForm_Initialize()
     On Error GoTo CleanFail
 
     mInFilterUpdate = True
-    mInitStage = "Applying theme"
     Me.BackColor = RGB(204, 0, 0)
     On Error Resume Next
     Me.Font.name = UI_FONT_NAME
     On Error GoTo 0
 
-    mInitStage = "Column widths"
     InitColumnWidths
 
-    mInitStage = "Building UI"
     BuildRuntimeUI
 
-    mInitStage = "Reading defaults"
     Dim defaultGame As String
     Dim defaultPokemon As String
     defaultGame = DefaultGameValue()
     defaultPokemon = DefaultPokemonValue()
 
-    mInitStage = "Populating filters"
     PopulateFilters defaultGame, defaultPokemon
 
-    mInitStage = "Loading data"
     LoadData
 
-    mInitStage = "Setting info label"
     SetInfoLabel
 
-    mInitStage = "Sort defaults"
     mSortCol = gcMove
     mSortAsc = True
 
-    mInitStage = "Rendering"
     RenderGrid
 
-    mInitStage = vbNullString
     mInFilterUpdate = False
     Exit Sub
 
 CleanFail:
     mInFilterUpdate = False
-    MsgBox "Unable to initialize Movelist [" & mInitStage & "]: " & Err.Description, vbExclamation
+    MsgBox "Unable to initialize Movelist: " & Err.Description, vbExclamation
 End Sub
 
 Private Sub InitColumnWidths()
@@ -542,10 +533,6 @@ Private Sub LoadData()
     End If
 End Sub
 
-Private Sub UpdateGameVisibility()
-    ' Game filter always visible in the new UX (kept for backward compatibility)
-End Sub
-
 Private Sub PopulateGameCombo(ByVal desiredSelection As String)
     Dim target As String
     target = ResolveGameLabel(desiredSelection)
@@ -653,26 +640,18 @@ Private Function ResolveGameLabel(ByVal rawValue As String) As String
 End Function
 
 Private Sub PopulateFilters(ByVal defaultGame As String, ByVal defaultPokemon As String)
-    SetInitStage "Pop filters: EnsureDataCaches"
     EnsureDataCaches
 
-    SetInitStage "Pop filters: Game combo"
     PopulateGameCombo defaultGame
 
-    SetInitStage "Pop filters: Pokemon combo"
     PopulatePokemonCombo CleanSelection(mCboGame.value, FILTER_ALL), defaultPokemon
 
-    SetInitStage "Pop filters: Type combo"
     PopulateTypeCombo
 
     mCboType.value = FILTER_ALL
 
     mLastPokemon = CleanSelection(mCboPokemon.value, FILTER_ALL)
     mLastGameSel = CleanSelection(mCboGame.value, FILTER_ALL)
-End Sub
-
-Private Sub SetInitStage(ByVal detail As String)
-    mInitStage = detail
 End Sub
 
 
@@ -704,7 +683,12 @@ Private Sub BuildRowsFromMoveKeys(ByVal moveKeys As Variant, ByVal pokemonName A
 
         Dim row As MoveRow
         row.moveName = Nz(meta(1))
-        row.MoveType = FormatTypeName(meta(2))
+        Dim moveTypeText As String
+        moveTypeText = FormatTypeName(meta(2))
+        If Len(moveTypeText) = 0 Then
+            moveTypeText = Nz(meta(2))
+        End If
+        row.MoveType = moveTypeText
         row.Category = Nz(meta(3))
         row.Power = Nz(meta(4))
         row.Accuracy = Nz(meta(5))
@@ -732,20 +716,13 @@ End Sub
 Private Sub EnsureDataCaches()
     If mCachesReady Then Exit Sub
 
-    SetInitStage "EnsureCaches: Load moves"
     GlobalTables.LoadMovesTable
-    SetInitStage "EnsureCaches: Load pokemon"
     GlobalTables.LoadPokemonTable
-    SetInitStage "EnsureCaches: Load game versions"
     GlobalTables.LoadGameversionsTable
-    SetInitStage "EnsureCaches: Load assets"
     GlobalTables.LoadAssetsTable
 
-    SetInitStage "EnsureCaches: Build move meta"
     BuildMoveMetaIndex
-    SetInitStage "EnsureCaches: Build pokemon move index"
     BuildPokemonMoveIndex
-    SetInitStage "EnsureCaches: Build game options"
     BuildGameOptions
 
     Set mPokemonOptionsCache = CreateObject("Scripting.Dictionary")
@@ -757,30 +734,17 @@ Private Sub EnsureDataCaches()
 End Sub
 
 Private Sub BuildMoveMetaIndex()
-    Const stageBase As String = "EnsureCaches: Build move meta"
-    SetInitStage stageBase & " [reset]"
-
-    SetInitStage stageBase & " [erase type]"
     mTypeOptions = Empty
 
-    SetInitStage stageBase & " [dict main]"
     Set mMoveMetaByKey = CreateObject("Scripting.Dictionary")
     mMoveMetaByKey.CompareMode = vbTextCompare
-    SetInitStage stageBase & " [dict type]"
-    Dim typeDict As Object
-    Set typeDict = CreateObject("Scripting.Dictionary")
-    typeDict.CompareMode = vbTextCompare
-
-    SetInitStage stageBase & " [dict name map]"
     Set mMoveKeyByName = CreateObject("Scripting.Dictionary")
     mMoveKeyByName.CompareMode = vbTextCompare
 
     Dim tbl As Variant
-    SetInitStage stageBase & " [load moves]"
-    tbl = GlobalTables.MovesTable
+    tbl = GlobalTables.movesTable
     If IsEmpty(tbl) Then Exit Sub
 
-    SetInitStage stageBase & " [header scan]"
     Dim headerRow As Long
     headerRow = LBound(tbl, 1)
 
@@ -810,10 +774,8 @@ Private Sub BuildMoveMetaIndex()
     firstRow = headerRow + 1
 
     Dim r As Long
-    SetInitStage stageBase & " [iterate]"
 
     For r = firstRow To UBound(tbl, 1)
-        SetInitStage stageBase & " [row " & CStr(r) & "]"
         Dim moveKey As String
         moveKey = Nz(tbl(r, moveKeyCol))
         If Len(moveKey) = 0 Then GoTo ContinueRow
@@ -832,10 +794,6 @@ Private Sub BuildMoveMetaIndex()
 
         mMoveMetaByKey(moveKey) = meta
 
-        If Len(typeText) > 0 Then
-            If Not typeDict.Exists(typeText) Then typeDict.Add typeText, True
-        End If
-
         Dim nameKey As String
         nameKey = NormalizeMoveNameKey(meta(1))
         If Len(nameKey) > 0 Then
@@ -845,14 +803,10 @@ Private Sub BuildMoveMetaIndex()
 ContinueRow:
     Next r
 
-    SetInitStage stageBase & " [finalize types]"
-    mTypeOptions = DictionaryToSortedArray(typeDict)
+    mTypeOptions = CollectMoveTypeOptions(tbl)
 End Sub
 
 Private Sub BuildPokemonMoveIndex()
-    Const stageBase As String = "EnsureCaches: Build pokemon move index"
-
-    SetInitStage stageBase & " [dict]"
     Set mMovesByPokemonGame = CreateObject("Scripting.Dictionary")
     mMovesByPokemonGame.CompareMode = vbTextCompare
 
@@ -871,7 +825,6 @@ Private Sub BuildPokemonMoveIndex()
     nameCol = GlobalTables.FindHeaderColumn(tbl, "DISPLAY_NAME")
     If nameCol = 0 Then Exit Sub
 
-    SetInitStage stageBase & " [scan columns]"
     Dim movesetCols As Object
     Set movesetCols = CreateObject("Scripting.Dictionary")
     movesetCols.CompareMode = vbTextCompare
@@ -899,7 +852,6 @@ Private Sub BuildPokemonMoveIndex()
 
     Dim r As Long
     For r = firstRow To lastRow
-        SetInitStage stageBase & " [row " & CStr(r) & "]"
         Dim pokemonName As String
         pokemonName = Nz(tbl(r, nameCol))
         If Len(pokemonName) = 0 Then GoTo ContinueRow
@@ -1026,24 +978,6 @@ ContinueRow:
 
     mGameOptions = arr
     BuildGameOptionsFromAssetsTable = True
-End Function
-
-Private Function DictionaryToSortedArray(ByVal dict As Object) As Variant
-    If dict Is Nothing Then Exit Function
-    If dict.count = 0 Then Exit Function
-
-    Dim arr() As String
-    ReDim arr(1 To dict.count)
-
-    Dim idx As Long
-    Dim key As Variant
-    For Each key In dict.keys
-        idx = idx + 1
-        arr(idx) = CStr(key)
-    Next key
-
-    SortStringArray arr
-    DictionaryToSortedArray = arr
 End Function
 
 Private Function GetPokemonOptionsForGame(ByVal gameSelection As String) As Variant
@@ -1517,37 +1451,6 @@ Private Sub SwapStrings(ByRef a As String, ByRef b As String)
     b = tmp
 End Sub
 
-Private Sub SortStringArray(ByRef arr() As String)
-    On Error GoTo CleanExit
-    If Not IsArray(arr) Then Exit Sub
-    QuickSortStrings arr, LBound(arr), UBound(arr)
-CleanExit:
-End Sub
-
-Private Sub QuickSortStrings(ByRef arr() As String, ByVal lo As Long, ByVal hi As Long)
-    If lo >= hi Then Exit Sub
-    Dim i As Long, j As Long
-    i = lo
-    j = hi
-    Dim pivot As String
-    pivot = arr((lo + hi) \ 2)
-    Do While i <= j
-        Do While StrComp(arr(i), pivot, vbTextCompare) < 0
-            i = i + 1
-        Loop
-        Do While StrComp(arr(j), pivot, vbTextCompare) > 0
-            j = j - 1
-        Loop
-        If i <= j Then
-            SwapStrings arr(i), arr(j)
-            i = i + 1
-            j = j - 1
-        End If
-    Loop
-    If lo < j Then QuickSortStrings arr, lo, j
-    If i < hi Then QuickSortStrings arr, i, hi
-End Sub
-
 ' =============================
 ' Rendering
 ' =============================
@@ -1964,13 +1867,5 @@ Private Function Nz(ByVal v As Variant) As String
     Else
         Nz = Trim$(CStr(v))
     End If
-End Function
-
-Private Function FormatTypeName(ByVal rawValue As Variant) As String
-    Dim t As String
-    t = Nz(rawValue)
-    If Len(t) = 0 Then Exit Function
-    t = LCase$(t)
-    FormatTypeName = StrConv(t, vbProperCase)
 End Function
 

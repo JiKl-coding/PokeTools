@@ -174,6 +174,8 @@ Represents one Pokémon form to be exported as one row in the Excel Pokédex she
 - `height_m`: float|null
 - `weight_kg`: float|null
 
+`ability1`, `ability2`, `hidden_ability` have display_name formatting (defined in transform.spec.md)
+
 **Sprites (selection rule):**
 - Prefer official artwork when available; otherwise fallback to default front sprite.
 - Apply the same rule for shiny.

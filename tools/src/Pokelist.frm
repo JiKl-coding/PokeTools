@@ -15,6 +15,8 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
 
+
+
 '===============================
 ' UserForm: Pokelist
 ' Custom Grid (Label + Frame)
@@ -125,18 +127,12 @@ Private mInFilterUpdate As Boolean
 Private mAbilitiesByType As Object         ' Dictionary: type -> Dictionary set
 Private mAbilityLists As Object            ' GAMEVERSIONS ability lists keyed by version
 
-' Typed filtering caches
-Private mAllTypes As Variant
-Private mAllAbilities As Variant
-Private mSuppressTyped As Boolean
-
 ' Cached tables + options
 Private mMovesetColumns As Object
 Private mTypeOptions As Variant
 Private mGameOptions As Variant
 Private mGameKeyToLabel As Object
 Private mCachesReady As Boolean
-Private mInitStage As String
 
 ' =============================
 ' Form init
@@ -146,41 +142,33 @@ Private Sub UserForm_Initialize()
 
     mInFilterUpdate = True
 
-    SetInitStage "Applying theme"
     Me.BackColor = RGB(204, 0, 0)
     On Error Resume Next
     Me.Font.name = UI_FONT_NAME
     Me.Font.Size = UI_FONT_SIZE
     On Error GoTo 0
 
-    SetInitStage "Column widths"
     InitColumnWidths
-    SetInitStage "Build runtime UI"
     BuildRuntimeUI
 
     Dim defaultGame As String
     defaultGame = DefaultGameValue()
 
-    SetInitStage "Load data"
     LoadData
-    SetInitStage "Populate filters"
     PopulateFilters defaultGame, True
-    SetInitStage "Info label"
     SetInfoLabel
 
     mSortCol = gcPokemon
     mSortAsc = True
 
-    SetInitStage "Render grid"
     RenderGrid
 
     mInFilterUpdate = False
-    SetInitStage vbNullString
     Exit Sub
 
 CleanFail:
     mInFilterUpdate = False
-    MsgBox "Unable to initialize Pokelist" & StageSuffix() & ": " & Err.Description, vbExclamation
+    MsgBox "Unable to initialize Pokelist: " & Err.Description, vbExclamation
 End Sub
 
 Private Sub InitColumnWidths()
@@ -202,6 +190,11 @@ End Sub
 
 Private Sub BuildRuntimeUI()
     Dim x As Single, y As Single
+
+    Dim ctrl As MSForms.Control
+    For Each ctrl In Me.Controls
+        ctrl.Visible = False
+    Next ctrl
 
     ' Info label
     Set mLblInfo = Me.Controls.Add("Forms.Label.1", "lblInfoPL", True)
@@ -499,9 +492,6 @@ Public Sub FiltersChanged()
         mCboAbility.ListIndex = 0
     End If
 
-    mAllTypes = CaptureComboItemsToArray(mCboType)
-    mAllAbilities = CaptureComboItemsToArray(mCboAbility)
-
     RenderGrid
 
     mLastGameSel = curGame
@@ -527,7 +517,6 @@ End Sub
 ' =============================
 Private Sub LoadData()
     On Error GoTo LoadDataFail
-    Trace "LoadData: start"
     EnsureDataCaches
 
     Dim tbl As Variant
@@ -535,7 +524,6 @@ Private Sub LoadData()
     If IsEmpty(tbl) Then
         ReDim mRows(1 To 1)
         mRowCount = 0
-        Trace "LoadData: PokemonTable empty"
         Exit Sub
     End If
 
@@ -549,7 +537,6 @@ Private Sub LoadData()
     curGameKey = GameVersionKey(curGameLabel)
     Dim movesetCol As Long
     movesetCol = MovesetColumnForKey(curGameKey)
-    Trace "LoadData: gameKey=" & curGameKey & " movesetCol=" & CStr(movesetCol)
 
     Dim headerRow As Long
     headerRow = LBound(tbl, 1)
@@ -586,8 +573,14 @@ Private Sub LoadData()
             pr.DexId = SafeToLong(tbl(r, mPokemonCols.DexId))
             pr.Pokemon = displayName
             pr.Form = Nz(tbl(r, mPokemonCols.Form))
-            pr.Type1 = Nz(tbl(r, mPokemonCols.Type1))
-            pr.Type2 = Nz(tbl(r, mPokemonCols.Type2))
+            Dim type1Text As String
+            Dim type2Text As String
+            type1Text = FormatTypeName(tbl(r, mPokemonCols.Type1))
+            type2Text = FormatTypeName(tbl(r, mPokemonCols.Type2))
+            If Len(type1Text) = 0 Then type1Text = Nz(tbl(r, mPokemonCols.Type1))
+            If Len(type2Text) = 0 Then type2Text = Nz(tbl(r, mPokemonCols.Type2))
+            pr.Type1 = type1Text
+            pr.Type2 = type2Text
             pr.HP = SafeToLong(tbl(r, mPokemonCols.HP))
             pr.Attack = SafeToLong(tbl(r, mPokemonCols.Attack))
             pr.Defense = SafeToLong(tbl(r, mPokemonCols.Defense))
@@ -614,11 +607,9 @@ ContinueRow:
     ElseIf mRowCount < capacity Then
         ReDim Preserve mRows(1 To mRowCount)
     End If
-    Trace "LoadData: finished, rows=" & CStr(mRowCount)
     Exit Sub
 
 LoadDataFail:
-    Trace "LoadData: ERROR at row=" & CStr(r) & " -> " & Err.Description
     Err.Raise Err.Number, Err.Source, Err.Description
 End Sub
 
@@ -640,9 +631,6 @@ Private Sub PopulateFilters(ByVal defaultGame As String, ByVal initial As Boolea
     PopulateGameCombo defaultGame
     PopulateTypeCombo
     PopulateAbilityFilterFromRows
-
-    mAllTypes = CaptureComboItemsToArray(mCboType)
-    mAllAbilities = CaptureComboItemsToArray(mCboAbility)
 
     If initial Then
         EnsureComboSelection mCboType, FILTER_ALL
@@ -673,8 +661,6 @@ Private Sub PopulateAbilityFilterFromRows()
         Next i
     End If
 
-    ' Update typed filtering cache
-    mAllAbilities = CaptureComboItemsToArray(mCboAbility)
 End Sub
 
 Private Function AbilityListForGame(ByVal gameKey As String) As Variant
@@ -741,24 +727,6 @@ Private Function FilterAbilityListForType(ByVal baseList As Variant, ByVal typeS
 End Function
 
 ' Simple in-place ascending sort for string array (1-D Variant)
-Private Sub SortStringArrayAsc(ByRef arr As Variant)
-    On Error GoTo CleanFail
-    Dim i As Long, j As Long
-    Dim tmp As Variant
-    For i = LBound(arr) To UBound(arr) - 1
-        For j = i + 1 To UBound(arr)
-            If StrComp(CStr(arr(j)), CStr(arr(i)), vbTextCompare) < 0 Then
-                tmp = arr(i)
-                arr(i) = arr(j)
-                arr(j) = tmp
-            End If
-        Next j
-    Next i
-    Exit Sub
-CleanFail:
-    ' no-op on sort failure
-End Sub
-
 Private Sub AbilCacheAdd(ByVal dict As Object, ByVal v As String)
     Dim t As String
     t = Trim$(CStr(v))
@@ -782,14 +750,6 @@ Private Sub AbilCacheAddToType(ByVal typeName As String, ByVal a1 As String, ByV
     AbilCacheAdd setRef, a2
     AbilCacheAdd setRef, ah
 End Sub
-
-Private Sub AddIfNonEmpty(ByVal dict As Object, ByVal v As String)
-    Dim t As String
-    t = Trim$(CStr(v))
-    If Len(t) = 0 Or t = "-" Or t = "0" Then Exit Sub
-    If Not dict.Exists(t) Then dict.Add t, True
-End Sub
-
 
 Private Sub EnsureComboHasValue(ByRef cbo As MSForms.ComboBox, ByVal val As String, Optional ByVal insertAtTop As Boolean = False)
     If Len(val) = 0 Then Exit Sub
@@ -836,12 +796,7 @@ End Sub
 ' Typed filtering (UI-only)
 ' =============================
 Public Sub ComboTyped(ByVal ctrlName As String, ByVal typedText As String)
-    If mSuppressTyped Then Exit Sub
-    If StrComp(ctrlName, mCboType.name, vbTextCompare) = 0 Then
-        FilterComboDropdown mCboType, typedText, mAllTypes
-    ElseIf StrComp(ctrlName, mCboAbility.name, vbTextCompare) = 0 Then
-        FilterComboDropdown mCboAbility, typedText, mAllAbilities
-    End If
+    ' Typed filtering disabled for Pokelist.
 End Sub
 
 Public Sub FilterControlChanged(ByVal ctrlName As String)
@@ -862,50 +817,6 @@ Public Sub ComboClicked(ByVal ctrlName As String)
     End Select
     HighlightComboText target
 End Sub
-
-Private Sub FilterComboDropdown(ByRef cbo As MSForms.ComboBox, ByVal typedText As String, ByRef sourceArr As Variant)
-    Dim needle As String: needle = LCase$(Trim$(typedText))
-    If Not HasArrayValues(sourceArr) Then sourceArr = CaptureComboItemsToArray(cbo)
-    mSuppressTyped = True
-    On Error Resume Next
-    Dim prevVal As String: prevVal = CStr(cbo.value)
-    cbo.Clear
-    Dim i As Long
-    If HasArrayValues(sourceArr) Then
-        For i = LBound(sourceArr) To UBound(sourceArr)
-            Dim s As String: s = CStr(sourceArr(i))
-            If Len(needle) = 0 Then
-                cbo.AddItem s
-            ElseIf LCase$(s) Like needle & "*" Then
-                cbo.AddItem s
-            End If
-        Next i
-    End If
-    If ComboContains(cbo, prevVal) Then
-        cbo.value = prevVal
-    ElseIf cbo.ListCount > 0 Then
-        cbo.ListIndex = 0
-    End If
-    On Error GoTo 0
-    If Len(needle) > 0 Then On Error Resume Next: cbo.DropDown: On Error GoTo 0
-    mSuppressTyped = False
-End Sub
-
-Private Function CaptureComboItemsToArray(ByRef cbo As MSForms.ComboBox) As Variant
-    On Error Resume Next
-    If cbo.ListCount <= 0 Then
-        CaptureComboItemsToArray = Array()
-        Exit Function
-    End If
-    Dim arr() As String
-    ReDim arr(0 To cbo.ListCount - 1)
-    Dim i As Long
-    For i = 0 To cbo.ListCount - 1
-        arr(i) = CStr(cbo.List(i))
-    Next i
-    CaptureComboItemsToArray = arr
-    On Error GoTo 0
-End Function
 
 Private Function HasArrayValues(ByVal arr As Variant) As Boolean
     On Error Resume Next
@@ -949,16 +860,13 @@ Private Sub RenderGrid()
     If UBound(filteredIdx) = 0 Then GoTo CleanExit
 
     SortIndices filteredIdx, 1, UBound(filteredIdx)
-    Trace "RenderGrid: filtered count=" & CStr(UBound(filteredIdx))
 
     y = 2
     For i = 1 To UBound(filteredIdx)
         idx = filteredIdx(i)
         abilityText = mRows(idx).AbilitiesDisplay
         rh = CalcRowHeight(abilityText)
-        Trace "RenderGrid: idx=" & CStr(idx) & " rh=" & CStr(rh) & " abilityLen=" & CStr(Len(abilityText))
         AddGridRow idx, y, rh
-        Trace "RenderGrid: added idx=" & CStr(idx) & " y=" & CStr(y)
         y = y + rh
     Next i
 
@@ -972,7 +880,6 @@ CleanExit:
     Exit Sub
 
 RenderGridFail:
-    Trace "RenderGrid: ERROR -> " & Err.Description & " (i=" & CStr(i) & ", idx=" & CStr(idx) & ")"
     Resume CleanExit
 End Sub
 
@@ -1266,35 +1173,7 @@ Private Sub BuildMovesetColumnMap()
 End Sub
 
 Private Sub BuildTypeOptions()
-    Dim tbl As Variant
-    tbl = GlobalTables.PokemonTable
-    If IsEmpty(tbl) Then Exit Sub
-
-    Dim typeDict As Object
-    Set typeDict = CreateObject("Scripting.Dictionary")
-    typeDict.CompareMode = vbTextCompare
-
-    Dim headerRow As Long
-    headerRow = LBound(tbl, 1)
-    Dim firstRow As Long
-    firstRow = headerRow + 1
-    Dim lastRow As Long
-    lastRow = UBound(tbl, 1)
-
-    Dim r As Long
-    For r = firstRow To lastRow
-        AddIfNonEmpty typeDict, Nz(tbl(r, mPokemonCols.Type1))
-        AddIfNonEmpty typeDict, Nz(tbl(r, mPokemonCols.Type2))
-    Next r
-
-    If typeDict.count = 0 Then
-        mTypeOptions = Empty
-    Else
-        Dim arr As Variant
-        arr = typeDict.keys
-        If IsArray(arr) Then SortStringArrayAsc arr
-        mTypeOptions = arr
-    End If
+    mTypeOptions = CollectMoveTypeOptions()
 End Sub
 
 Private Sub BuildAbilityLists()
@@ -1530,24 +1409,6 @@ ContinueRow:
     BuildGameOptionsFromAssetsTable = True
 End Function
 
-Private Function DictionaryToSortedArray(ByVal dict As Object) As Variant
-    If dict Is Nothing Then Exit Function
-    If dict.count = 0 Then Exit Function
-
-    Dim arr() As String
-    ReDim arr(1 To dict.count)
-
-    Dim idx As Long
-    Dim key As Variant
-    For Each key In dict.keys
-        idx = idx + 1
-        arr(idx) = CStr(key)
-    Next key
-
-    SortStringArrayAsc arr
-    DictionaryToSortedArray = arr
-End Function
-
 Private Function Nz(ByVal v As Variant) As String
     If IsError(v) Or IsNull(v) Or IsEmpty(v) Then
         Nz = ""
@@ -1565,25 +1426,9 @@ Private Function SafeToLong(ByVal value As Variant) As Long
     ElseIf IsNumeric(text) Then
         SafeToLong = CLng(CDbl(text))
     Else
-        Trace "SafeToLong: coercing non-numeric value '" & text & "'"
-        SafeToLong = CLng(Val(text))
+        SafeToLong = CLng(val(text))
     End If
     Exit Function
 CleanZero:
     SafeToLong = 0
-End Function
-
-Private Sub Trace(ByVal message As String)
-    On Error Resume Next
-    Debug.Print "[Pokelist] " & message
-    On Error GoTo 0
-End Sub
-
-Private Sub SetInitStage(ByVal detail As String)
-    mInitStage = detail
-    If Len(detail) > 0 Then Trace "Stage -> " & detail
-End Sub
-
-Private Function StageSuffix() As String
-    If Len(mInitStage) > 0 Then StageSuffix = " [" & mInitStage & "]"
 End Function

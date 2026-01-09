@@ -73,7 +73,105 @@ Public Sub HighlightComboText(ByRef cbo As MSForms.ComboBox)
     If cbo Is Nothing Then Exit Sub
     On Error Resume Next
     cbo.SelStart = 0
-    cbo.SelLength = Len(cbo.Text)
+    cbo.SelLength = Len(cbo.text)
     cbo.DropDown
     On Error GoTo 0
 End Sub
+
+Public Function FormatTypeName(ByVal rawValue As Variant) As String
+    Dim t As String
+    t = CleanSelection(rawValue, vbNullString)
+    If Len(t) = 0 Then Exit Function
+    t = LCase$(t)
+    FormatTypeName = StrConv(t, vbProperCase)
+End Function
+
+Public Function DictionaryToSortedArray(ByVal dict As Object) As Variant
+    If dict Is Nothing Then Exit Function
+    If dict.count = 0 Then Exit Function
+
+    Dim arr() As String
+    ReDim arr(1 To dict.count)
+
+    Dim idx As Long
+    Dim key As Variant
+    For Each key In dict.keys
+        idx = idx + 1
+        arr(idx) = CStr(key)
+    Next key
+
+    SortStringArray arr
+    DictionaryToSortedArray = arr
+End Function
+
+Private Sub SortStringArray(ByRef arr() As String)
+    On Error GoTo CleanExit
+    If Not IsArray(arr) Then Exit Sub
+    QuickSortStrings arr, LBound(arr), UBound(arr)
+CleanExit:
+End Sub
+
+Private Sub QuickSortStrings(ByRef arr() As String, ByVal lo As Long, ByVal hi As Long)
+    If lo >= hi Then Exit Sub
+    Dim i As Long, j As Long
+    i = lo
+    j = hi
+    Dim pivot As String
+    pivot = arr((lo + hi) \ 2)
+    Do While i <= j
+        Do While StrComp(arr(i), pivot, vbTextCompare) < 0
+            i = i + 1
+        Loop
+        Do While StrComp(arr(j), pivot, vbTextCompare) > 0
+            j = j - 1
+        Loop
+        If i <= j Then
+            Dim tmp As String
+            tmp = arr(i)
+            arr(i) = arr(j)
+            arr(j) = tmp
+            i = i + 1
+            j = j - 1
+        End If
+    Loop
+    If lo < j Then QuickSortStrings arr, lo, j
+    If i < hi Then QuickSortStrings arr, i, hi
+End Sub
+
+Public Function CollectMoveTypeOptions(Optional ByRef movesTable As Variant) As Variant
+    Dim tbl As Variant
+    If IsMissing(movesTable) Then
+        GlobalTables.LoadMovesTable
+        tbl = GlobalTables.movesTable
+    Else
+        tbl = movesTable
+    End If
+
+    If IsEmpty(tbl) Then Exit Function
+
+    Dim typeCol As Long
+    typeCol = GlobalTables.FindHeaderColumn(tbl, "TYPE")
+    If typeCol = 0 Then Exit Function
+
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.CompareMode = vbTextCompare
+
+    Dim headerRow As Long
+    headerRow = LBound(tbl, 1)
+    Dim firstRow As Long
+    firstRow = headerRow + 1
+    Dim lastRow As Long
+    lastRow = UBound(tbl, 1)
+
+    Dim r As Long
+    For r = firstRow To lastRow
+        Dim typeText As String
+        typeText = FormatTypeName(tbl(r, typeCol))
+        If Len(typeText) > 0 Then
+            If Not dict.Exists(typeText) Then dict.Add typeText, True
+        End If
+    Next r
+
+    CollectMoveTypeOptions = DictionaryToSortedArray(dict)
+End Function

@@ -103,7 +103,8 @@ def _read_games_map(path: str) -> Optional[dict[str, str]]:
 
     sample = "\n".join(lines[:5])
     try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=[",", ";", "\t"])
+        candidate_delimiters = ",;\t"
+        dialect = csv.Sniffer().sniff(sample, delimiters=candidate_delimiters)
     except csv.Error:
         dialect = csv.get_dialect("excel")
         # Best-effort: prefer ';' if present in the first non-empty line.
@@ -150,6 +151,12 @@ def _write_row(ws: Any, values: List[Any]) -> None:
 def _none_last(value: Any) -> tuple[bool, Any]:
     """Return a deterministic sort key that places None after real values."""
     return (value is None, value)
+
+
+def _record_str_field(record: Dict[str, Any], field: str) -> str:
+    """Best-effort string accessor for sorting dictionaries by string keys."""
+    value = record.get(field)
+    return value if isinstance(value, str) else ""
 
 
 def _load_types_order() -> tuple[list[str], bool, str]:
@@ -317,29 +324,62 @@ def _build_gameversion_columns(
         vg_to_forms[vg].add(form_key)
         vg_to_moves[vg].add(move_key)
 
-    form_display = {
-        rec.get("form_key"): rec.get("display_name")
-        for rec in pokemon_forms
-        if isinstance(rec, dict) and isinstance(rec.get("form_key"), str)
-    }
+    form_display: Dict[str, Optional[str]] = {}
+    for rec in pokemon_forms:
+        if not isinstance(rec, dict):
+            continue
+        form_key = rec.get("form_key")
+        if not isinstance(form_key, str):
+            continue
+        display_name = rec.get("display_name")
+        form_display[form_key] = display_name if isinstance(display_name, str) else None
 
-    move_display = {
-        rec.get("move_key"): rec.get("display_name")
-        for rec in moves
-        if isinstance(rec, dict) and isinstance(rec.get("move_key"), str)
-    }
+    move_display: Dict[str, Optional[str]] = {}
+    for rec in moves:
+        if not isinstance(rec, dict):
+            continue
+        move_key = rec.get("move_key")
+        if not isinstance(move_key, str):
+            continue
+        display_name = rec.get("display_name")
+        move_display[move_key] = display_name if isinstance(display_name, str) else None
 
-    ability_display = {
-        rec.get("ability_key"): rec.get("display_name")
-        for rec in abilities
-        if isinstance(rec, dict) and isinstance(rec.get("ability_key"), str)
-    }
+    ability_display: Dict[str, Optional[str]] = {}
+    for rec in abilities:
+        if not isinstance(rec, dict):
+            continue
+        ability_key = rec.get("ability_key")
+        if not isinstance(ability_key, str):
+            continue
+        display_name = rec.get("display_name")
+        ability_display[ability_key] = (
+            display_name if isinstance(display_name, str) else None
+        )
 
-    item_display = {
-        rec.get("item_key"): rec.get("display_name")
-        for rec in items
-        if isinstance(rec, dict) and isinstance(rec.get("item_key"), str)
-    }
+    ability_display_to_key: Dict[str, str] = {}
+    ability_display_to_key_ci: Dict[str, str] = {}
+    for rec in abilities:
+        if not isinstance(rec, dict):
+            continue
+        ability_key = rec.get("ability_key")
+        display_name = rec.get("display_name")
+        if not (isinstance(ability_key, str) and isinstance(display_name, str)):
+            continue
+        trimmed = display_name.strip()
+        if not trimmed:
+            continue
+        ability_display_to_key[trimmed] = ability_key
+        ability_display_to_key_ci[trimmed.lower()] = ability_key
+
+    item_display: Dict[str, Optional[str]] = {}
+    for rec in items:
+        if not isinstance(rec, dict):
+            continue
+        item_key = rec.get("item_key")
+        if not isinstance(item_key, str):
+            continue
+        display_name = rec.get("display_name")
+        item_display[item_key] = display_name if isinstance(display_name, str) else None
 
     form_abilities: Dict[str, List[str]] = {}
     for rec in pokemon_forms:
@@ -348,19 +388,30 @@ def _build_gameversion_columns(
         form_key = rec.get("form_key")
         if not isinstance(form_key, str):
             continue
-        ability_keys: List[str] = []
+        resolved_ability_keys: List[str] = []
         for field in ("ability1", "ability2", "hidden_ability"):
             value = rec.get(field)
-            if isinstance(value, str) and value.strip():
-                ability_keys.append(value)
-        form_abilities[form_key] = ability_keys
+            if not isinstance(value, str):
+                continue
+            trimmed = value.strip()
+            if not trimmed:
+                continue
+            ability_key = ability_display_to_key.get(trimmed)
+            if not ability_key:
+                ability_key = ability_display_to_key_ci.get(trimmed.lower())
+            if ability_key:
+                resolved_ability_keys.append(ability_key)
+        form_abilities[form_key] = resolved_ability_keys
 
     vg_to_abilities: Dict[str, set[str]] = {vg: set() for vg in version_groups}
     for vg, form_keys in vg_to_forms.items():
-        ability_keys: set[str] = set()
+        vg_ability_keys: set[str] = set()
         for form_key in form_keys:
-            ability_keys.update(form_abilities.get(form_key, []))
-        vg_to_abilities[vg] = ability_keys
+            resolved = form_abilities.get(form_key)
+            if not resolved:
+                continue
+            vg_ability_keys.update(resolved)
+        vg_to_abilities[vg] = vg_ability_keys
 
     all_form_keys: set[str] = set()
     all_move_keys: set[str] = set()
@@ -422,7 +473,8 @@ def run_export_mvp(config_path: str = "config/config.json") -> int:
     wb = Workbook()
     # Remove default sheet so we control sheet order.
     default_ws = wb.active
-    wb.remove(default_ws)
+    if default_ws is not None:
+        wb.remove(default_ws)
 
     # Sheet: Pokemon
     ws_pokemon = wb.create_sheet("Pokemon")
@@ -565,7 +617,8 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
 
     wb = Workbook()
     default_ws = wb.active
-    wb.remove(default_ws)
+    if default_ws is not None:
+        wb.remove(default_ws)
 
     # Sheet: Pokemon
     ws_pokemon = wb.create_sheet("Pokemon")
@@ -599,7 +652,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     movesets = _moveset_map(learnset_entries, version_groups)
 
     # Row ordering: DEX_ID, FORM_KEY
-    forms_sorted = [rec for rec in forms if isinstance(rec, dict)]
+    forms_sorted: List[Dict[str, Any]] = [rec for rec in forms if isinstance(rec, dict)]
     forms_sorted.sort(key=lambda r: (r.get("dex_id"), r.get("form_key")))
     for rec in forms_sorted:
         form_key = rec.get("form_key")
@@ -639,7 +692,9 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
         ws_ls,
         ["FORM_KEY", "DISPLAY_NAME", "VERSION_GROUP", "MOVE_KEY", "METHOD", "LEVEL"],
     )
-    ls_sorted = [rec for rec in learnset_entries if isinstance(rec, dict)]
+    ls_sorted: List[Dict[str, Any]] = [
+        rec for rec in learnset_entries if isinstance(rec, dict)
+    ]
     ls_sorted.sort(
         key=lambda r: (
             r.get("form_key"),
@@ -678,8 +733,8 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             "EFFECT_SHORT",
         ],
     )
-    moves_sorted = [rec for rec in moves if isinstance(rec, dict)]
-    moves_sorted.sort(key=lambda r: r.get("move_key"))
+    moves_sorted: List[Dict[str, Any]] = [rec for rec in moves if isinstance(rec, dict)]
+    moves_sorted.sort(key=lambda r: _record_str_field(r, "move_key"))
     for rec in moves_sorted:
         _write_row(
             ws_moves,
@@ -699,8 +754,8 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     # Sheet: Items
     ws_items = wb.create_sheet("Items")
     _write_row(ws_items, ["ITEM_KEY", "DISPLAY_NAME", "CATEGORY", "EFFECT_SHORT"])
-    items_sorted = [rec for rec in items if isinstance(rec, dict)]
-    items_sorted.sort(key=lambda r: r.get("item_key"))
+    items_sorted: List[Dict[str, Any]] = [rec for rec in items if isinstance(rec, dict)]
+    items_sorted.sort(key=lambda r: _record_str_field(r, "item_key"))
     for rec in items_sorted:
         _write_row(
             ws_items,
@@ -715,8 +770,10 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     # Sheet: Abilities
     ws_abilities = wb.create_sheet("Abilities")
     _write_row(ws_abilities, ["ABILITY_KEY", "DISPLAY_NAME", "EFFECT_SHORT"])
-    abilities_sorted = [rec for rec in abilities if isinstance(rec, dict)]
-    abilities_sorted.sort(key=lambda r: r.get("ability_key"))
+    abilities_sorted: List[Dict[str, Any]] = [
+        rec for rec in abilities if isinstance(rec, dict)
+    ]
+    abilities_sorted.sort(key=lambda r: _record_str_field(r, "ability_key"))
     for rec in abilities_sorted:
         _write_row(
             ws_abilities,
@@ -729,8 +786,10 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
         ws_natures,
         ["NATURE_KEY", "DISPLAY_NAME", "INCREASED_STAT", "DECREASED_STAT"],
     )
-    natures_sorted = [rec for rec in natures if isinstance(rec, dict)]
-    natures_sorted.sort(key=lambda r: r.get("nature_key"))
+    natures_sorted: List[Dict[str, Any]] = [
+        rec for rec in natures if isinstance(rec, dict)
+    ]
+    natures_sorted.sort(key=lambda r: _record_str_field(r, "nature_key"))
     for rec in natures_sorted:
         _write_row(
             ws_natures,
@@ -742,8 +801,8 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             ],
         )
 
-    types_sorted = [rec for rec in types if isinstance(rec, dict)]
-    types_sorted.sort(key=lambda r: r.get("type_key"))
+    types_sorted: List[Dict[str, Any]] = [rec for rec in types if isinstance(rec, dict)]
+    types_sorted.sort(key=lambda r: _record_str_field(r, "type_key"))
 
     # Sheet: Evolutions
     # Note: data-contract.md defines FROM_DEX_ID/TO_DEX_ID etc; export writes derived values.
@@ -765,7 +824,9 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
             "HELD_ITEM_KEY",
         ],
     )
-    evo_sorted = [rec for rec in evolutions if isinstance(rec, dict)]
+    evo_sorted: List[Dict[str, Any]] = [
+        rec for rec in evolutions if isinstance(rec, dict)
+    ]
     evo_sorted.sort(
         key=lambda r: (
             _none_last(r.get("from_dex_id")),
