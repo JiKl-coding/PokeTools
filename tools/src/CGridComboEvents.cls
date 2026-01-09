@@ -45,7 +45,7 @@ End Sub
 ' Typed input: UI-only filtering of dropdown items (forms may optionally implement ComboTyped)
 Private Sub Combo_Change()
   On Error Resume Next
-  CallByName mParent, "ComboTyped", VbMethod, Combo.name, Combo.Text
+  CallByName mParent, "ComboTyped", VbMethod, Combo.name, Combo.text
   On Error GoTo 0
 End Sub
 

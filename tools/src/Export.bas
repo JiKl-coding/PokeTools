@@ -115,26 +115,7 @@ Public Sub ExportMon()
     monName = CleanFileName(CStr(ws.Range("PKMN_DEX").Value2))
     If Len(monName) = 0 Then monName = "Pokemon"
 
-    Dim filePath As Variant
-    filePath = Application.GetSaveAsFilename( _
-        InitialFileName:=monName & ".pdf", _
-        FileFilter:="PDF files (*.pdf), *.pdf" _
-    )
-    If filePath = False Then Exit Sub
-
-    ExportRangeToPdf ws, exportRng, CStr(filePath)
-
-    Dim resp As VbMsgBoxResult
-    resp = MsgBox( _
-        "PDF exported successfully." & vbCrLf & vbCrLf & _
-        "Do you wish to open it now?", _
-        vbQuestion + vbYesNo, _
-        "ExportMon" _
-    )
-
-    If resp = vbYes Then
-        ThisWorkbook.FollowHyperlink Address:=CStr(filePath), NewWindow:=True
-    End If
+    If Not ExportWithPrompt(ws, exportRng, monName & ".pdf", "ExportMon") Then Exit Sub
 
     Exit Sub
 
@@ -151,31 +132,32 @@ Public Sub ExportTypeChart()
     Dim exportRng As Range
     Set exportRng = ws.Range("B3:Y28")
 
-    Dim filePath As Variant
-    filePath = Application.GetSaveAsFilename( _
-        InitialFileName:="TypeChart.pdf", _
-        FileFilter:="PDF files (*.pdf), *.pdf" _
-    )
-    If filePath = False Then Exit Sub
-
-    ExportRangeToPdf ws, exportRng, CStr(filePath)
-
-    Dim resp As VbMsgBoxResult
-    resp = MsgBox( _
-        "PDF exported successfully." & vbCrLf & vbCrLf & _
-        "Do you wish to open it now?", _
-        vbQuestion + vbYesNo, _
-        "ExportTypeChart" _
-    )
-
-    If resp = vbYes Then
-        ThisWorkbook.FollowHyperlink Address:=CStr(filePath), NewWindow:=True
-    End If
+    If Not ExportWithPrompt(ws, exportRng, "TypeChart.pdf", "ExportTypeChart") Then Exit Sub
 
     Exit Sub
 
 CleanFail:
     MsgBox "ExportTypeChart failed:" & vbCrLf & Err.Description, vbExclamation, "ExportTypeChart"
+End Sub
+
+Public Sub ExportNatures()
+    On Error GoTo CleanFail
+
+    Dim ws As Worksheet
+    Set ws = Naturedex   ' CodeName
+
+    Dim exportRng As Range
+    Set exportRng = ws.Range("B4:L35")
+
+    Dim baseName As String
+    baseName = "Natures"
+
+    If Not ExportWithPrompt(ws, exportRng, baseName & ".pdf", "ExportNatures") Then Exit Sub
+
+    Exit Sub
+
+CleanFail:
+    MsgBox "ExportNatures failed:" & vbCrLf & Err.Description, vbExclamation, "ExportNatures"
 End Sub
 
 
@@ -199,6 +181,50 @@ Private Function CleanFileName(ByVal s As String) As String
     Loop
 
     CleanFileName = s
+End Function
+
+Private Function ExportWithPrompt( _
+    ByVal ws As Worksheet, _
+    ByVal exportRng As Range, _
+    ByVal defaultFileName As String, _
+    ByVal dialogTitle As String _
+) As Boolean
+
+    Dim filePath As Variant
+    filePath = Application.GetSaveAsFilename( _
+        InitialFileName:=defaultFileName, _
+        FileFilter:="PDF files (*.pdf), *.pdf" _
+    )
+    If VarType(filePath) = vbBoolean And filePath = False Then Exit Function
+
+    Dim resolvedPath As String
+    resolvedPath = CStr(filePath)
+    If Len(resolvedPath) = 0 Then Exit Function
+
+    If Len(Dir$(resolvedPath)) > 0 Then
+        Dim overwriteResp As VbMsgBoxResult
+        overwriteResp = MsgBox( _
+            "File already exists. Overwrite?", _
+            vbExclamation + vbYesNo + vbDefaultButton2, _
+            dialogTitle _
+        )
+        If overwriteResp <> vbYes Then Exit Function
+    End If
+
+    ExportRangeToPdf ws, exportRng, resolvedPath
+    ExportWithPrompt = True
+
+    Dim resp As VbMsgBoxResult
+    resp = MsgBox( _
+        "PDF exported successfully." & vbCrLf & vbCrLf & _
+        "Do you wish to open it now?", _
+        vbQuestion + vbYesNo, _
+        dialogTitle _
+    )
+
+    If resp = vbYes Then
+        ThisWorkbook.FollowHyperlink Address:=resolvedPath, NewWindow:=True
+    End If
 End Function
 
 

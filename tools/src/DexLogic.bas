@@ -335,7 +335,7 @@ Private Sub SetDexValidationFromArray(ByVal rngDex As Range, ByVal values As Var
 
     ' Clear old list
     wsLists.Range(wsLists.Cells(TMP_START_ROW, TMP_COL), _
-                  wsLists.Cells(wsLists.Rows.Count, TMP_COL)).ClearContents
+                  wsLists.Cells(wsLists.Rows.count, TMP_COL)).ClearContents
 
     Dim n As Long
     n = UBound(values) - LBound(values) + 1
@@ -422,15 +422,15 @@ Private Sub GetAllMovesFromLearnsets(ByVal pokemonName As String, _
         End If
     Next r
 
-    If dict.Count = 0 Then Exit Sub
+    If dict.count = 0 Then Exit Sub
 
     Dim moves() As String
-    ReDim moves(1 To dict.Count)
+    ReDim moves(1 To dict.count)
 
     Dim i As Long
     i = 1
     Dim key As Variant
-    For Each key In dict.Keys
+    For Each key In dict.keys
         moves(i) = CStr(key)
         i = i + 1
     Next key
@@ -521,7 +521,7 @@ Private Sub SetMoveValidationFromArrays(ByVal rngMove As Range, ByVal moves As V
 
     ' Clear old lists
     wsLists.Range(wsLists.Cells(TMP_MOVE_START_ROW, TMP_MOVE_COL), _
-                  wsLists.Cells(wsLists.Rows.Count, TMP_MOVE_COL)).ClearContents
+                  wsLists.Cells(wsLists.Rows.count, TMP_MOVE_COL)).ClearContents
 
     Dim n As Long
     n = UBound(moves) - LBound(moves) + 1
@@ -647,7 +647,7 @@ Private Sub SetNote(ByVal rng As Range, ByVal noteText As String)
     ' Delete existing, then add clean
     If Not rng.Comment Is Nothing Then rng.Comment.Delete
 
-    rng.AddComment Text:=noteText
+    rng.AddComment text:=noteText
     rng.Comment.Visible = False
 
     ' Format: bold text

@@ -325,6 +325,12 @@ def _extract_abilities(
     return ability1, ability2, hidden_ability
 
 
+def _format_ability_display(value: Optional[str]) -> Optional[str]:
+    if isinstance(value, str) and value.strip():
+        return slug_titlecase(value.strip())
+    return None
+
+
 def build_pokemon_form(
     *,
     raw_pokemon: Dict[str, Any],
@@ -353,6 +359,9 @@ def build_pokemon_form(
 
     stats = _extract_stats(pokemon_data)
     ability1, ability2, hidden_ability = _extract_abilities(pokemon_data)
+    ability1 = _format_ability_display(ability1)
+    ability2 = _format_ability_display(ability2)
+    hidden_ability = _format_ability_display(hidden_ability)
     sprite_url, shiny_sprite_url = _pick_sprites(pokemon_data)
     about = _pick_about(species_data, about_language, preferred_version_group)
 

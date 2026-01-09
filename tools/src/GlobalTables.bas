@@ -10,7 +10,7 @@ Option Explicit
 
 Public PokemonTable As Variant
 Public LearnsetsTable As Variant
-Public MovesTable As Variant
+Public movesTable As Variant
 Public ItemsTable As Variant
 Public AbilitiesTable As Variant
 Public NaturesTable As Variant
@@ -29,8 +29,8 @@ Public Sub LoadLearnsetsTable()
 End Sub
 
 Public Sub LoadMovesTable()
-    If TableHasData(MovesTable) Then Exit Sub
-    LoadSheetIntoArray "Moves", MovesTable
+    If TableHasData(movesTable) Then Exit Sub
+    LoadSheetIntoArray "Moves", movesTable
 End Sub
 
 Public Sub LoadItemsTable()

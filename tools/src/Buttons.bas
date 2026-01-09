@@ -41,9 +41,9 @@ Sub AssignTypes()
         type2Col = GlobalTables.FindHeaderColumn(GlobalTables.PokemonTable, "TYPE2")
     End If
 
-    If Not IsEmpty(GlobalTables.MovesTable) Then
-        moveNameCol = GlobalTables.FindHeaderColumn(GlobalTables.MovesTable, "DISPLAY_NAME")
-        moveTypeCol = GlobalTables.FindHeaderColumn(GlobalTables.MovesTable, "TYPE")
+    If Not IsEmpty(GlobalTables.movesTable) Then
+        moveNameCol = GlobalTables.FindHeaderColumn(GlobalTables.movesTable, "DISPLAY_NAME")
+        moveTypeCol = GlobalTables.FindHeaderColumn(GlobalTables.movesTable, "TYPE")
     End If
 
     ' Pokemon lookup via cached table
@@ -59,9 +59,9 @@ Sub AssignTypes()
     ' Move lookup via cached table
     If Len(move) > 0 And moveNameCol > 0 Then
         Dim MoveRow As Long
-        MoveRow = GlobalTables.FindRowByValue(GlobalTables.MovesTable, moveNameCol, move)
+        MoveRow = GlobalTables.FindRowByValue(GlobalTables.movesTable, moveNameCol, move)
         If MoveRow > 0 And moveTypeCol > 0 Then
-            MoveType = NzText(GlobalTables.MovesTable(MoveRow, moveTypeCol))
+            MoveType = NzText(GlobalTables.movesTable(MoveRow, moveTypeCol))
         End If
     End If
 

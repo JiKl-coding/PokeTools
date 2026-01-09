@@ -29,17 +29,29 @@ Public Sub UnprotectForMacros(ByVal ws As Worksheet)
 End Sub
 
 Public Sub ProtectAllSheets()
-    ProtectForMacros Pokedex
+    ProtectForMacros Abilitydex
+    ProtectForMacros DamageCalc
+    ProtectForMacros Itemdex
     ProtectForMacros Lists
-    ProtectForMacros TypeChart
+    ProtectForMacros Movedex
+    ProtectForMacros Naturedex
+    ProtectForMacros Pokedex
     ProtectForMacros Settings
+    ProtectForMacros Teambuilder
+    ProtectForMacros TypeChart
 End Sub
 
 Public Sub UnprotectAllSheets()
-    UnprotectForMacros Pokedex
+    UnprotectForMacros Abilitydex
+    UnprotectForMacros DamageCalc
+    UnprotectForMacros Itemdex
     UnprotectForMacros Lists
-    UnprotectForMacros TypeChart
+    UnprotectForMacros Movedex
+    UnprotectForMacros Naturedex
+    UnprotectForMacros Pokedex
     UnprotectForMacros Settings
+    UnprotectForMacros Teambuilder
+    UnprotectForMacros TypeChart
 End Sub
 
 ' Initialize relative paths
