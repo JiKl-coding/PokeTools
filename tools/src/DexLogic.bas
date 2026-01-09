@@ -196,6 +196,44 @@ Public Function NormalizeGameVersion(ByVal s As String) As String
 
     NormalizeGameVersion = t
 End Function
+
+Public Function DisplayNameFromGameKey(ByVal value As Variant) As String
+    Dim raw As String
+    If IsError(value) Or IsNull(value) Then
+        DisplayNameFromGameKey = "All"
+        Exit Function
+    End If
+    On Error GoTo CleanFallback
+    raw = Trim$(CStr(value))
+
+    Dim norm As String
+    norm = NormalizeGameVersion(raw)
+
+    Dim friendly As String
+    If Len(norm) = 0 Then
+        friendly = raw
+    Else
+        friendly = norm
+    End If
+
+    If Len(friendly) = 0 Then
+        DisplayNameFromGameKey = "All"
+        Exit Function
+    End If
+
+    friendly = Replace(friendly, "-", " ")
+    friendly = Replace(friendly, "_", " ")
+
+    Do While InStr(friendly, "  ") > 0
+        friendly = Replace(friendly, "  ", " ")
+    Loop
+
+    DisplayNameFromGameKey = StrConv(Trim$(friendly), vbProperCase)
+    Exit Function
+
+CleanFallback:
+    DisplayNameFromGameKey = "All"
+End Function
 Private Function GetPokemonListForGame(ByVal gameVersion As String) As Variant
     On Error GoTo CleanFail
 
@@ -297,7 +335,7 @@ Private Sub SetDexValidationFromArray(ByVal rngDex As Range, ByVal values As Var
 
     ' Clear old list
     wsLists.Range(wsLists.Cells(TMP_START_ROW, TMP_COL), _
-                  wsLists.Cells(wsLists.Rows.count, TMP_COL)).ClearContents
+                  wsLists.Cells(wsLists.Rows.Count, TMP_COL)).ClearContents
 
     Dim n As Long
     n = UBound(values) - LBound(values) + 1
@@ -384,15 +422,15 @@ Private Sub GetAllMovesFromLearnsets(ByVal pokemonName As String, _
         End If
     Next r
 
-    If dict.count = 0 Then Exit Sub
+    If dict.Count = 0 Then Exit Sub
 
     Dim moves() As String
-    ReDim moves(1 To dict.count)
+    ReDim moves(1 To dict.Count)
 
     Dim i As Long
     i = 1
     Dim key As Variant
-    For Each key In dict.keys
+    For Each key In dict.Keys
         moves(i) = CStr(key)
         i = i + 1
     Next key
@@ -483,7 +521,7 @@ Private Sub SetMoveValidationFromArrays(ByVal rngMove As Range, ByVal moves As V
 
     ' Clear old lists
     wsLists.Range(wsLists.Cells(TMP_MOVE_START_ROW, TMP_MOVE_COL), _
-                  wsLists.Cells(wsLists.Rows.count, TMP_MOVE_COL)).ClearContents
+                  wsLists.Cells(wsLists.Rows.Count, TMP_MOVE_COL)).ClearContents
 
     Dim n As Long
     n = UBound(moves) - LBound(moves) + 1
