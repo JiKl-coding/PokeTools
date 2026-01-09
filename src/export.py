@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 import csv
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from openpyxl import Workbook
 
@@ -25,6 +25,7 @@ from .transform import load_config
 DERIVED_DIR = "data/derived"
 EXPORT_DIR = "data/export"
 EXPORT_PATH = os.path.join(EXPORT_DIR, "pokedata.xlsx")
+RAW_ITEM_DIR = "data/raw/item"
 
 
 def _read_assets_blocks(path: str) -> list[tuple[str, list[tuple[str, str]]]]:
@@ -206,11 +207,205 @@ def _moveset_map(
             out[form_key][vg] = ";".join(sorted(moves))
     return out
 
+
+def _normalize_version_groups(raw: Any) -> List[Dict[str, Any]]:
+    entries: List[Dict[str, Any]] = []
+    if not isinstance(raw, list):
+        return entries
+    for item in raw:
+        if isinstance(item, str) and item.strip():
+            entries.append({"id": item, "label": item, "versions": []})
+            continue
+        if not isinstance(item, dict):
+            continue
+        vg_id = item.get("id") or item.get("slug") or item.get("key")
+        if not isinstance(vg_id, str) or not vg_id.strip():
+            continue
+        label = (
+            item.get("name")
+            or item.get("label")
+            or item.get("display_name")
+            or vg_id
+        )
+        if not isinstance(label, str) or not label.strip():
+            label = vg_id
+        versions_raw = item.get("versions")
+        versions: List[str] = []
+        if isinstance(versions_raw, list):
+            versions = [v for v in versions_raw if isinstance(v, str) and v.strip()]
+        entries.append({"id": vg_id, "label": label, "versions": versions})
+    return entries
+
+
+def _sorted_display_values(values: Iterable[Any]) -> List[str]:
+    unique: set[str] = set()
+    for value in values:
+        if isinstance(value, str):
+            trimmed = value.strip()
+            if trimmed:
+                unique.add(trimmed)
+    return sorted(unique, key=lambda v: (v.lower(), v))
+
+
+def _display_names_from_keys(
+    keys: Iterable[str], display_map: Dict[str, Optional[str]]
+) -> List[str]:
+    return _sorted_display_values(display_map.get(key) for key in keys)
+
+
+def _load_item_version_membership(version_groups: List[str]) -> Dict[str, set[str]]:
+    membership: Dict[str, set[str]] = {vg: set() for vg in version_groups}
+    if not os.path.isdir(RAW_ITEM_DIR):
+        return membership
+
+    vg_allow = set(version_groups)
+    for name in os.listdir(RAW_ITEM_DIR):
+        if not name.lower().endswith(".json"):
+            continue
+        path = os.path.join(RAW_ITEM_DIR, name)
+        raw = read_json(path) or {}
+        data = raw.get("data") or {}
+        if not isinstance(data, dict):
+            continue
+        item_key = data.get("name")
+        if not isinstance(item_key, str):
+            continue
+
+        flavor_entries = data.get("flavor_text_entries")
+        if not isinstance(flavor_entries, list):
+            continue
+
+        seen_vgs: set[str] = set()
+        for entry in flavor_entries:
+            if not isinstance(entry, dict):
+                continue
+            vg_name = ((entry.get("version_group") or {}).get("name"))
+            if isinstance(vg_name, str) and vg_name in vg_allow:
+                seen_vgs.add(vg_name)
+
+        for vg in seen_vgs:
+            membership.setdefault(vg, set()).add(item_key)
+
+    return membership
+
+
+def _build_gameversion_columns(
+    *,
+    version_groups: List[str],
+    learnset_entries: List[Dict[str, Any]],
+    pokemon_forms: List[Dict[str, Any]],
+    moves: List[Dict[str, Any]],
+    abilities: List[Dict[str, Any]],
+    items: List[Dict[str, Any]],
+    item_membership: Dict[str, set[str]],
+) -> List[Tuple[str, List[str]]]:
+    vg_to_forms: Dict[str, set[str]] = {vg: set() for vg in version_groups}
+    vg_to_moves: Dict[str, set[str]] = {vg: set() for vg in version_groups}
+
+    for entry in learnset_entries:
+        form_key = entry.get("form_key")
+        move_key = entry.get("move_key")
+        vg = entry.get("version_group")
+        if not (
+            isinstance(form_key, str)
+            and isinstance(move_key, str)
+            and isinstance(vg, str)
+        ):
+            continue
+        if vg not in vg_to_forms:
+            continue
+        vg_to_forms[vg].add(form_key)
+        vg_to_moves[vg].add(move_key)
+
+    form_display = {
+        rec.get("form_key"): rec.get("display_name")
+        for rec in pokemon_forms
+        if isinstance(rec, dict) and isinstance(rec.get("form_key"), str)
+    }
+
+    move_display = {
+        rec.get("move_key"): rec.get("display_name")
+        for rec in moves
+        if isinstance(rec, dict) and isinstance(rec.get("move_key"), str)
+    }
+
+    ability_display = {
+        rec.get("ability_key"): rec.get("display_name")
+        for rec in abilities
+        if isinstance(rec, dict) and isinstance(rec.get("ability_key"), str)
+    }
+
+    item_display = {
+        rec.get("item_key"): rec.get("display_name")
+        for rec in items
+        if isinstance(rec, dict) and isinstance(rec.get("item_key"), str)
+    }
+
+    form_abilities: Dict[str, List[str]] = {}
+    for rec in pokemon_forms:
+        if not isinstance(rec, dict):
+            continue
+        form_key = rec.get("form_key")
+        if not isinstance(form_key, str):
+            continue
+        ability_keys: List[str] = []
+        for field in ("ability1", "ability2", "hidden_ability"):
+            value = rec.get(field)
+            if isinstance(value, str) and value.strip():
+                ability_keys.append(value)
+        form_abilities[form_key] = ability_keys
+
+    vg_to_abilities: Dict[str, set[str]] = {vg: set() for vg in version_groups}
+    for vg, form_keys in vg_to_forms.items():
+        ability_keys: set[str] = set()
+        for form_key in form_keys:
+            ability_keys.update(form_abilities.get(form_key, []))
+        vg_to_abilities[vg] = ability_keys
+
+    all_form_keys: set[str] = set()
+    all_move_keys: set[str] = set()
+    all_ability_keys: set[str] = set()
+    all_item_keys: set[str] = set()
+
+    for keys in vg_to_forms.values():
+        all_form_keys.update(keys)
+    for keys in vg_to_moves.values():
+        all_move_keys.update(keys)
+    for keys in vg_to_abilities.values():
+        all_ability_keys.update(keys)
+    for keys in item_membership.values():
+        all_item_keys.update(keys)
+
+    columns: List[Tuple[str, List[str]]] = [
+        ("MOVES_ALL", _display_names_from_keys(all_move_keys, move_display)),
+        ("POKEMON_ALL", _display_names_from_keys(all_form_keys, form_display)),
+        ("ABILITIES_ALL", _display_names_from_keys(all_ability_keys, ability_display)),
+        ("ITEMS_ALL", _display_names_from_keys(all_item_keys, item_display)),
+    ]
+
+    for vg in version_groups:
+        columns.append((f"MOVES_{vg}", _display_names_from_keys(vg_to_moves[vg], move_display)))
+        columns.append((f"POKEMON_{vg}", _display_names_from_keys(vg_to_forms[vg], form_display)))
+        columns.append(
+            (
+                f"ABILITIES_{vg}",
+                _display_names_from_keys(vg_to_abilities[vg], ability_display),
+            )
+        )
+        columns.append(
+            (
+                f"ITEMS_{vg}",
+                _display_names_from_keys(item_membership.get(vg, set()), item_display),
+            )
+        )
+
+    return columns
+
 def run_export_mvp(config_path: str = "config/config.json") -> int:
     """Export MVP: create workbook with Pokemon + Meta sheets."""
     cfg = load_config(config_path)
-    version_groups = cfg.get("version_groups", [])
-    version_groups = [vg for vg in version_groups if isinstance(vg, str)]
+    vg_entries = _normalize_version_groups(cfg.get("version_groups", []))
+    version_groups = [entry["id"] for entry in vg_entries]
 
     forms_path = os.path.join(DERIVED_DIR, "pokemon_forms.json")
     meta_path = os.path.join(DERIVED_DIR, "meta.json")
@@ -320,8 +515,8 @@ def run_export_mvp(config_path: str = "config/config.json") -> int:
 def run_export_extended(config_path: str = "config/config.json") -> int:
     """Export Extended: add Learnsets/Moves/Items/Abilities/Natures/Evolutions/TypeChart/Assets."""
     cfg = load_config(config_path)
-    version_groups = cfg.get("version_groups", [])
-    version_groups = [vg for vg in version_groups if isinstance(vg, str)]
+    vg_entries = _normalize_version_groups(cfg.get("version_groups", []))
+    version_groups = [entry["id"] for entry in vg_entries]
 
     forms_doc = _read_derived(os.path.join(DERIVED_DIR, "pokemon_forms.json"))
     learnsets_doc = _read_derived(os.path.join(DERIVED_DIR, "learnset_entries.json"))
@@ -503,7 +698,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
 
     # Sheet: Items
     ws_items = wb.create_sheet("Items")
-    _write_row(ws_items, ["ITEM_KEY", "DISPLAY_NAME", "CATEGORY", "EFFECT_SHORT", "ICON_URL"])
+    _write_row(ws_items, ["ITEM_KEY", "DISPLAY_NAME", "CATEGORY", "EFFECT_SHORT"])
     items_sorted = [rec for rec in items if isinstance(rec, dict)]
     items_sorted.sort(key=lambda r: r.get("item_key"))
     for rec in items_sorted:
@@ -514,7 +709,6 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
                 rec.get("display_name"),
                 rec.get("category"),
                 rec.get("effect_short"),
-                rec.get("icon_url"),
             ],
         )
 
@@ -703,35 +897,38 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
     games_map = _read_games_map(games_map_path)
 
     # Source of truth (IDs): config/config.json -> version_groups (preserve order)
-    version_groups_raw = cfg.get("version_groups")
-    version_group_ids: list[Any] = version_groups_raw if isinstance(version_groups_raw, list) else []
-
-    for i, vg in enumerate(version_group_ids):
-        # Best-effort support for both string-only config and richer dict entries.
-        if isinstance(vg, str):
-            vg_id = vg
-            fallback_label = vg
-        elif isinstance(vg, dict):
-            vg_id = vg.get("id") or vg.get("slug") or vg.get("key")
-            fallback_label = vg.get("name") or vg.get("label") or vg.get("display_name") or vg_id
-        else:
-            continue
-
+    for row_offset, entry in enumerate(vg_entries):
+        vg_id = entry.get("id")
         if not isinstance(vg_id, str) or not vg_id.strip():
             continue
-        if not isinstance(fallback_label, str) or not fallback_label.strip():
+        fallback_label = entry.get("label") if isinstance(entry.get("label"), str) else vg_id
+        if not fallback_label or not fallback_label.strip():
             fallback_label = vg_id
-
         label = fallback_label
         if isinstance(games_map, dict):
             mapped = games_map.get(vg_id)
             if isinstance(mapped, str) and mapped.strip():
                 label = mapped
+        ws_assets.cell(row=2 + row_offset, column=games_block_col, value=label)
 
-        ws_assets.cell(row=2 + i, column=games_block_col, value=label)
+    ws_assets.cell(row=2 + len(vg_entries), column=games_block_col, value="All")
 
-    # Add final catch-all entry
-    ws_assets.cell(row=2 + len(version_group_ids), column=games_block_col, value="All")
+    # Sheet: GAMEVERSIONS
+    item_membership = _load_item_version_membership(version_groups)
+    gameversion_columns = _build_gameversion_columns(
+        version_groups=version_groups,
+        learnset_entries=[rec for rec in learnset_entries if isinstance(rec, dict)],
+        pokemon_forms=[rec for rec in forms if isinstance(rec, dict)],
+        moves=[rec for rec in moves if isinstance(rec, dict)],
+        abilities=[rec for rec in abilities if isinstance(rec, dict)],
+        items=[rec for rec in items if isinstance(rec, dict)],
+        item_membership=item_membership,
+    )
+    ws_gameversions = wb.create_sheet("GAMEVERSIONS")
+    for col_index, (header, values) in enumerate(gameversion_columns, start=1):
+        ws_gameversions.cell(row=1, column=col_index, value=header)
+        for row_index, value in enumerate(values, start=2):
+            ws_gameversions.cell(row=row_index, column=col_index, value=value)
 
     wb.save(EXPORT_PATH)
     print(f"export extended: wrote {EXPORT_PATH}")
