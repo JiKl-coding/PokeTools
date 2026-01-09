@@ -24,12 +24,12 @@ Option Explicit
 Private Const FILTER_ALL As String = "All"
 Private Const GAME_KEY_ALL As String = "__all__"
 Private Const UI_FONT_NAME As String = "Aptos Narrow"
-Private Const UI_FONT_SIZE As Integer = 11
+Private Const UI_FONT_SIZE As Integer = 12
 
 ' Visual layout (points)
 Private Const PAD As Single = 6
 Private Const HEADER_H As Single = 18
-Private Const ROW_MIN_H As Single = 18
+Private Const ROW_MIN_H As Single = 22
 
 ' Column indices
 Private Enum GridCol
@@ -207,12 +207,13 @@ Private Sub BuildRuntimeUI()
         .Left = PAD
         .Top = PAD
         .Width = Me.InsideWidth - (PAD * 2)
-        .Height = 18
+        .Height = 25
         .ForeColor = vbWhite
         .BackStyle = fmBackStyleTransparent
         .caption = "Pokelist"
         .Font.name = UI_FONT_NAME
         .Font.Size = UI_FONT_SIZE + 5
+        .Font.Bold = True
     End With
 
     ' Filters row
@@ -239,12 +240,12 @@ Private Sub BuildRuntimeUI()
         .Left = x
         .Top = y
         .Width = 120
-        .Height = 18
+        .Height = 20
         .Style = fmStyleDropDownCombo
         .MatchEntry = fmMatchEntryComplete
         On Error Resume Next
         .Font.name = UI_FONT_NAME
-        .Font.Size = 20
+        .Font.Size = UI_FONT_SIZE
         On Error GoTo 0
     End With
 
@@ -270,12 +271,12 @@ Private Sub BuildRuntimeUI()
         .Left = x
         .Top = y
         .Width = 160
-        .Height = 18
+        .Height = 20
         .Style = fmStyleDropDownCombo
         .MatchEntry = fmMatchEntryComplete
         On Error Resume Next
         .Font.name = UI_FONT_NAME
-        .Font.Size = 20
+        .Font.Size = UI_FONT_SIZE
         On Error GoTo 0
     End With
 
@@ -301,12 +302,12 @@ Private Sub BuildRuntimeUI()
         .Left = x
         .Top = y
         .Width = 140
-        .Height = 18
+        .Height = 20
         .Style = fmStyleDropDownCombo
         .MatchEntry = fmMatchEntryComplete
         On Error Resume Next
         .Font.name = UI_FONT_NAME
-        .Font.Size = 20
+        .Font.Size = UI_FONT_SIZE
         On Error GoTo 0
     End With
 
@@ -317,7 +318,7 @@ Private Sub BuildRuntimeUI()
         .Left = x
         .Top = y - 1
         .Width = 60
-        .Height = 22
+        .Height = 24
         .caption = "Apply"
         .Font.name = UI_FONT_NAME
         .Font.Size = UI_FONT_SIZE
@@ -330,7 +331,7 @@ Private Sub BuildRuntimeUI()
         .Left = x
         .Top = y - 1
         .Width = 90
-        .Height = 22
+        .Height = 24
         .caption = "Clear Filters"
         .Font.name = UI_FONT_NAME
         .Font.Size = UI_FONT_SIZE
@@ -604,52 +605,6 @@ End Sub
 
 ' Removed: GetPokemonNamesFromListsO (dataset now uses MOVESET rule directly)
 
-Private Function FindPokemonRowLocal(ByVal wsPokemon As Worksheet, ByVal name As String) As Long
-    Dim lastRow As Long
-    lastRow = SafeLastDataRow(wsPokemon, "C")
-    If lastRow < 2 Then Exit Function
-    Dim rng As Range
-    Set rng = wsPokemon.Range("C1:C" & lastRow)
-    Dim f As Range
-    Set f = rng.Find(What:=name, LookIn:=xlValues, LookAt:=xlWhole, _
-                     SearchOrder:=xlByRows, SearchDirection:=xlNext, MatchCase:=False)
-    If Not f Is Nothing Then FindPokemonRowLocal = f.row
-End Function
-
-Private Function SafeLastDataRow(ByVal ws As Worksheet, ByVal colLetter As String) As Long
-    On Error GoTo CleanFail
-    Dim rng As Range, f As Range
-    Set rng = ws.Columns(colLetter)
-    Set f = rng.Find(What:="*", After:=rng.Cells(1, 1), LookIn:=xlValues, _
-                     LookAt:=xlPart, SearchOrder:=xlByRows, SearchDirection:=xlPrevious, MatchCase:=False)
-    If f Is Nothing Then
-        SafeLastDataRow = 1
-    Else
-        SafeLastDataRow = f.row
-    End If
-    Exit Function
-CleanFail:
-    SafeLastDataRow = ws.Cells(ws.Rows.count, colLetter).End(xlUp).row
-End Function
-
-Private Sub FillPokeRow(ByRef row As PokeRow, ByVal ws As Worksheet, ByVal r As Long)
-    row.DexId = SafeToLong(ws.Cells(r, "A").value)
-    row.Pokemon = Trim$(CStr(ws.Cells(r, "C").value))
-    row.Form = Trim$(CStr(ws.Cells(r, "D").value))
-    row.Type1 = Trim$(CStr(ws.Cells(r, "E").value))
-    row.Type2 = Trim$(CStr(ws.Cells(r, "F").value))
-    row.HP = SafeToLong(ws.Cells(r, "G").value)
-    row.Attack = SafeToLong(ws.Cells(r, "H").value)
-    row.Defense = SafeToLong(ws.Cells(r, "I").value)
-    row.SpAtt = SafeToLong(ws.Cells(r, "J").value)
-    row.SpDef = SafeToLong(ws.Cells(r, "K").value)
-    row.Speed = SafeToLong(ws.Cells(r, "L").value)
-    row.Total = SafeToLong(ws.Cells(r, "M").value)
-    row.Ability1 = Trim$(CStr(ws.Cells(r, "N").value))
-    row.Ability2 = Trim$(CStr(ws.Cells(r, "O").value))
-    row.AbilityHidden = Trim$(CStr(ws.Cells(r, "P").value))
-    row.AbilitiesDisplay = BuildAbilitiesText(row.Ability1, row.Ability2, row.AbilityHidden)
-End Sub
 
 Private Function BuildAbilitiesText(ByVal a1 As String, ByVal a2 As String, ByVal ah As String) As String
     Dim parts As String
@@ -816,32 +771,6 @@ Private Sub AddIfNonEmpty(ByVal dict As Object, ByVal v As String)
     If Not dict.Exists(t) Then dict.Add t, True
 End Sub
 
-Private Sub PopulateComboUniqueFromColumn(ByVal cbo As MSForms.ComboBox, ByVal ws As Worksheet, ByVal colLetter As String, ByVal allValue As String, Optional skipZero As Boolean = False)
-    Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
-    dict.CompareMode = vbTextCompare
-
-    Dim lastRow As Long, r As Long
-    lastRow = ws.Cells(ws.Rows.count, colLetter).End(xlUp).row
-
-    For r = 2 To lastRow
-        Dim v As String
-        v = Trim$(CStr(ws.Cells(r, colLetter).value))
-        If skipZero And (v = "0" Or v = "") Then GoTo NextR
-        If Len(v) > 0 Then
-            If Not dict.Exists(v) Then dict.Add v, True
-        End If
-NextR:
-    Next r
-
-    cbo.Clear
-    If allValue <> "" Then cbo.AddItem allValue
-
-    Dim k As Variant
-    For Each k In dict.keys
-        cbo.AddItem CStr(k)
-    Next k
-End Sub
 
 Private Sub EnsureComboHasValue(ByRef cbo As MSForms.ComboBox, ByVal val As String, Optional ByVal insertAtTop As Boolean = False)
     If Len(val) = 0 Then Exit Sub
@@ -913,15 +842,6 @@ Public Sub ComboClicked(ByVal ctrlName As String)
             Exit Sub
     End Select
     HighlightComboText target
-End Sub
-
-Private Sub HighlightComboText(ByRef cbo As MSForms.ComboBox)
-    If cbo Is Nothing Then Exit Sub
-    On Error Resume Next
-    cbo.SelStart = 0
-    cbo.SelLength = Len(cbo.Text)
-    cbo.DropDown
-    On Error GoTo 0
 End Sub
 
 Private Sub FilterComboDropdown(ByRef cbo As MSForms.ComboBox, ByVal typedText As String, ByRef sourceArr As Variant)
@@ -1241,51 +1161,6 @@ Private Sub UpdateContextGame(ByVal gameSelection As String)
     On Error GoTo 0
 End Sub
 
-Private Function CleanSelection(ByVal rawValue As Variant, ByVal fallback As String) As String
-    If IsError(rawValue) Or IsNull(rawValue) Then
-        CleanSelection = fallback
-        Exit Function
-    End If
-
-    Dim scalar As Variant
-    scalar = rawValue
-
-    If IsArray(scalar) Then
-        Dim lb1 As Long, lb2 As Long
-        lb1 = LBound(scalar, 1)
-        lb2 = LBound(scalar, 2)
-        On Error Resume Next
-        scalar = scalar(lb1, lb2)
-        On Error GoTo 0
-    End If
-
-    If IsError(scalar) Then GoTo CleanFallback
-
-    Dim t As String
-    On Error GoTo CleanFallback
-    t = Trim$(CStr(scalar))
-    On Error GoTo 0
-    If Len(t) = 0 Then
-        CleanSelection = fallback
-    Else
-        CleanSelection = t
-    End If
-    Exit Function
-
-CleanFallback:
-    CleanSelection = fallback
-End Function
-
-Private Function GameVersionKey(ByVal value As String) As String
-    Dim norm As String
-    norm = DexLogic.NormalizeGameVersion(CleanSelection(value, FILTER_ALL))
-    If Len(norm) = 0 Or StrComp(norm, FILTER_ALL, vbTextCompare) = 0 Then
-        GameVersionKey = GAME_KEY_ALL
-    Else
-        GameVersionKey = LCase$(norm)
-    End If
-End Function
-
 Private Sub EnsureDataCaches()
     If mCachesReady Then Exit Sub
 
@@ -1498,25 +1373,6 @@ Private Sub PopulateTypeCombo()
                 mCboType.AddItem CStr(mTypeOptions(i))
             End If
         Next i
-    End If
-End Sub
-
-Private Sub EnsureComboSelection(ByRef cbo As MSForms.ComboBox, ByVal desiredValue As String)
-    Dim target As String
-    target = CleanSelection(desiredValue, FILTER_ALL)
-
-    Dim i As Long
-    For i = 0 To cbo.ListCount - 1
-        If StrComp(CStr(cbo.List(i)), target, vbTextCompare) = 0 Then
-            cbo.ListIndex = i
-            Exit Sub
-        End If
-    Next i
-
-    If cbo.ListCount > 0 Then
-        cbo.ListIndex = 0
-    Else
-        cbo.value = target
     End If
 End Sub
 
