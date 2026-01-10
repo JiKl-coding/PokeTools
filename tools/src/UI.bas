@@ -6,3 +6,8 @@ End Sub
 Public Sub OpenPokelist()
     Pokelist.Show
 End Sub
+
+Public Sub OpenPokemoves()
+    Pokemoves.Show
+End Sub
+

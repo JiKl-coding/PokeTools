@@ -63,22 +63,13 @@ Public Sub HandleGameChange(ByVal ws As Worksheet)
     gameRaw = Trim$(CStr(rngGame.value))
 
     ' Empty => All
-    If (gameRaw = vbNullString Or gameRaw = 0) Then
+    If (gameRaw = vbNullString Or gameRaw = "0") Then
         rngGame.value = "All"
         gameRaw = "All"
     End If
 
     Dim gameVersion As String
     gameVersion = NormalizeGameVersion(gameRaw)
-
-    ' Skip if game didn't actually change (prevents work when only Pokemon changed)
-    Dim wsKey As String
-    wsKey = ws.CodeName
-
-    If mLastGame.Exists(wsKey) Then
-        If StrComp(CStr(mLastGame(wsKey)), gameVersion, vbTextCompare) = 0 Then Exit Sub
-    End If
-    mLastGame(wsKey) = gameVersion
 
     ' Build Pokemon list for this game
     Dim pkmnList As Variant
@@ -180,7 +171,7 @@ Public Function NormalizeGameVersion(ByVal s As String) As String
     t = Replace(t, " ", "-")
     t = Replace(t, "&", "-")
     t = Replace(t, ChrW(&H2019), "")
-
+    
     ' Collapse multiple hyphens
     Do While InStr(1, t, "--", vbBinaryCompare) > 0
         t = Replace(t, "--", "-")
@@ -195,6 +186,7 @@ Public Function NormalizeGameVersion(ByVal s As String) As String
     Loop
 
     NormalizeGameVersion = t
+    
 End Function
 
 Public Function DisplayNameFromGameKey(ByVal value As Variant) As String

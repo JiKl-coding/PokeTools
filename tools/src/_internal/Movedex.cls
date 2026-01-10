@@ -15,7 +15,7 @@ Private Sub Worksheet_Change(ByVal target As Range)
 
     Set watchRange = Union(Me.Range("GAMEVERSION"), Me.Range("MVLIST"))
     
-    If (Me.Range("GAMEVERSION") = vbNullString Or Me.Range("GAMEVERSION") = 0) Then
+    If (Me.Range("GAMEVERSION") = vbNullString Or Me.Range("GAMEVERSION") = "0") Then
         Me.Range("GAMEVERSION") = "All"
     End If
     

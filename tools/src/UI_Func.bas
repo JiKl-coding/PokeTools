@@ -56,7 +56,7 @@ Public Sub EnsureComboSelection(ByRef cbo As MSForms.ComboBox, ByVal desiredValu
 
     Dim i As Long
     For i = 0 To cbo.ListCount - 1
-        If StrComp(CStr(cbo.List(i)), target, vbTextCompare) = 0 Then
+        If StrComp(CStr(cbo.list(i)), target, vbTextCompare) = 0 Then
             cbo.ListIndex = i
             Exit Sub
         End If
