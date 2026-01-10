@@ -63,7 +63,7 @@ Public Sub HandleGameChange(ByVal ws As Worksheet)
     gameRaw = Trim$(CStr(rngGame.value))
 
     ' Empty => All
-    If gameRaw = vbNullString Then
+    If (gameRaw = vbNullString Or gameRaw = 0) Then
         rngGame.value = "All"
         gameRaw = "All"
     End If
@@ -359,7 +359,7 @@ Private Sub SetDexValidationFromArray(ByVal rngDex As Range, ByVal values As Var
         
         With rngDex.Validation
             .Delete
-            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, formula1:=src
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=src
             .IgnoreBlank = True
             .InCellDropdown = True
         End With
@@ -546,7 +546,7 @@ Private Sub SetMoveValidationFromArrays(ByVal rngMove As Range, ByVal moves As V
         
         With rngMove.Validation
             .Delete
-            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, formula1:=srcMoves
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:=srcMoves
             .IgnoreBlank = True
             .InCellDropdown = True
         End With

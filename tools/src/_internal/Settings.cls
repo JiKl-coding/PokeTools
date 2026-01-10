@@ -16,7 +16,7 @@ Private Sub Worksheet_Change(ByVal target As Range)
     Application.EnableEvents = False
     Application.ScreenUpdating = False
     
-    If Me.Range("PROTECT_SHEETS").value = False Then
+    If Settings.Range("PROTECT_SHEETS").value = False Then
         Functions.UnprotectAllSheets
     Else
         Functions.ProtectAllSheets
