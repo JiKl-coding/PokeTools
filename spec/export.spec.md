@@ -155,6 +155,7 @@ One row = one item.
 - `DISPLAY_NAME` (string)
 - `CATEGORY` (string|null)
 - `EFFECT_SHORT` (string|null)
+- `ICON_URL` (string|null)
 
 ### Row ordering
 - Order by `ITEM_KEY` ascending.
