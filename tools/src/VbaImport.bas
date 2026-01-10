@@ -18,7 +18,7 @@ Private Const VBEXT_CT_DOCUMENT As Long = 100
 ' - Deletes existing modules/forms first
 ' - Never touches ThisWorkbook or Worksheets (document modules)
 ' - Intended for VS Code / external editor workflow
-Public Sub ImportAllVba()
+Public Sub ImportAllVb()
 
     Dim srcPath As String
     srcPath = ThisWorkbook.path & Application.PathSeparator & "src" & Application.PathSeparator

@@ -140,6 +140,23 @@ CleanFail:
     MsgBox "ExportTypeChart failed:" & vbCrLf & Err.Description, vbExclamation, "ExportTypeChart"
 End Sub
 
+Public Sub ExportMovedex()
+    On Error GoTo CleanFail
+
+    Dim ws As Worksheet
+    Set ws = Movedex  ' CodeName
+
+    Dim exportRng As Range
+    Set exportRng = ws.Range("B4:L34")
+
+    If Not ExportWithPrompt(ws, exportRng, "Movedex.pdf", "ExportMovedex") Then Exit Sub
+
+    Exit Sub
+
+CleanFail:
+    MsgBox "ExportTypeChart failed:" & vbCrLf & Err.Description, vbExclamation, "ExportTypeChart"
+End Sub
+
 Public Sub ExportNatures()
     On Error GoTo CleanFail
 
