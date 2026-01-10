@@ -18,6 +18,11 @@ Attribute VB_Exposed = False
 
 
 
+
+
+
+
+
 '===============================
 ' UserForm: Pokelist
 ' Custom Grid (Label + Frame)
@@ -780,7 +785,7 @@ End Sub
 Private Function ComboContains(ByVal cbo As MSForms.ComboBox, ByVal val As String) As Boolean
     Dim i As Long
     For i = 0 To cbo.ListCount - 1
-        If StrComp(CStr(cbo.List(i)), val, vbTextCompare) = 0 Then
+        If StrComp(CStr(cbo.list(i)), val, vbTextCompare) = 0 Then
             ComboContains = True
             Exit Function
         End If
