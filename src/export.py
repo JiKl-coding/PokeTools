@@ -753,7 +753,10 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
 
     # Sheet: Items
     ws_items = wb.create_sheet("Items")
-    _write_row(ws_items, ["ITEM_KEY", "DISPLAY_NAME", "CATEGORY", "EFFECT_SHORT"])
+    _write_row(
+        ws_items,
+        ["ITEM_KEY", "DISPLAY_NAME", "CATEGORY", "EFFECT_SHORT", "ICON_URL"],
+    )
     items_sorted: List[Dict[str, Any]] = [rec for rec in items if isinstance(rec, dict)]
     items_sorted.sort(key=lambda r: _record_str_field(r, "item_key"))
     for rec in items_sorted:
@@ -764,6 +767,7 @@ def run_export_extended(config_path: str = "config/config.json") -> int:
                 rec.get("display_name"),
                 rec.get("category"),
                 rec.get("effect_short"),
+                rec.get("icon_url"),
             ],
         )
 
