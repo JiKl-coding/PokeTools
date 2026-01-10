@@ -135,6 +135,13 @@ Private mGameOptions As Variant
 Private mGameKeyToLabel As Object
 Private mCachesReady As Boolean
 
+Private Enum PokelistContext
+    PokelistContextPokedex = 0
+    PokelistContextOther = 1
+End Enum
+
+Private mContextTarget As PokelistContext
+
 ' =============================
 ' Form init
 ' =============================
@@ -142,6 +149,7 @@ Private Sub UserForm_Initialize()
     On Error GoTo CleanFail
 
     mInFilterUpdate = True
+    mContextTarget = DetectPokelistContext()
 
     Me.BackColor = RGB(204, 0, 0)
     On Error Resume Next
@@ -508,7 +516,10 @@ End Sub
 ' =============================
 Private Sub SetInfoLabel()
     Dim game As String
-    game = Trim$(CStr(Pokedex.Range("GAME").value))
+    game = CleanSelection(mCboGame.value, FILTER_ALL)
+    If Len(game) = 0 Then
+        game = ContextGameValue()
+    End If
     mLblInfo.caption = "Pokelist (" & game & ")"
     Me.caption = mLblInfo.caption
 End Sub
@@ -533,7 +544,10 @@ Private Sub LoadData()
     mAbilitiesByType.CompareMode = vbTextCompare
 
     Dim curGameLabel As String
-    curGameLabel = CleanSelection(Pokedex.Range("GAME").value, FILTER_ALL)
+    curGameLabel = CleanSelection(mCboGame.value, FILTER_ALL)
+    If Len(curGameLabel) = 0 Then
+        curGameLabel = ContextGameValue()
+    End If
     Dim curGameKey As String
     curGameKey = GameVersionKey(curGameLabel)
     Dim movesetCol As Long
@@ -933,8 +947,10 @@ End Sub
 
 Public Sub OnRowDoubleClick(ByVal rowIndex As Long)
     If rowIndex <= 0 Or rowIndex > mRowCount Then Exit Sub
+    If mContextTarget <> PokelistContextPokedex Then Exit Sub
     Dim pname As String
     pname = mRows(rowIndex).Pokemon
+    If Len(pname) = 0 Then Exit Sub
     On Error Resume Next
     Pokedex.Range("PKMN_DEX").value = pname
     On Error GoTo 0
@@ -1087,18 +1103,44 @@ End Function
 ' Context helpers
 ' =============================
 Private Function DefaultGameValue() As String
-    On Error GoTo CleanFail
-    DefaultGameValue = CleanSelection(Pokedex.Range("GAME").value, FILTER_ALL)
-    Exit Function
-CleanFail:
-    DefaultGameValue = FILTER_ALL
+    DefaultGameValue = ContextGameValue()
 End Function
 
 Private Sub UpdateContextGame(ByVal gameSelection As String)
+    If mContextTarget <> PokelistContextPokedex Then Exit Sub
     On Error Resume Next
     Pokedex.Range("GAME").value = CleanSelection(gameSelection, FILTER_ALL)
     On Error GoTo 0
 End Sub
+
+Private Function ContextGameValue() As String
+    On Error GoTo CleanFail
+    If mContextTarget = PokelistContextPokedex Then
+        ContextGameValue = CleanSelection(Pokedex.Range("GAME").value, FILTER_ALL)
+    Else
+        ContextGameValue = FILTER_ALL
+    End If
+    Exit Function
+CleanFail:
+    ContextGameValue = FILTER_ALL
+End Function
+
+Private Function DetectPokelistContext() As PokelistContext
+    On Error GoTo CleanFallback
+    Dim ws As Worksheet
+    Set ws = Application.ActiveSheet
+    If ws Is Nothing Then GoTo CleanFallback
+
+    If ws Is Pokedex Then
+        DetectPokelistContext = PokelistContextPokedex
+    Else
+        DetectPokelistContext = PokelistContextOther
+    End If
+    Exit Function
+
+CleanFallback:
+    DetectPokelistContext = PokelistContextOther
+End Function
 
 Private Sub EnsureDataCaches()
     If mCachesReady Then Exit Sub

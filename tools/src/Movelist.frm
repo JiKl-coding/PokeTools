@@ -105,6 +105,14 @@ Private mGameOptions As Variant
 Private mAllMoveKeysCache As Object
 Private mCachesReady As Boolean
 
+Private Enum MoveFormContext
+    MoveContextPokedex = 0
+    MoveContextMovedex = 1
+    MoveContextOther = 2
+End Enum
+
+Private mContextTarget As MoveFormContext
+
 ' =============================
 ' Form lifecycle
 ' =============================
@@ -112,6 +120,7 @@ Private Sub UserForm_Initialize()
     On Error GoTo CleanFail
 
     mInFilterUpdate = True
+    mContextTarget = DetectMoveContextTarget()
     Me.BackColor = RGB(204, 0, 0)
     On Error Resume Next
     Me.Font.name = UI_FONT_NAME
@@ -593,16 +602,17 @@ Private Sub PopulateTypeCombo()
 End Sub
 
 Private Function DefaultGameValue() As String
-    On Error GoTo CleanFail
-    DefaultGameValue = CleanSelection(Pokedex.Range("GAME").value, FILTER_ALL)
-    Exit Function
-CleanFail:
-    DefaultGameValue = FILTER_ALL
+    DefaultGameValue = ContextGameValue()
 End Function
 
 Private Function DefaultPokemonValue() As String
     On Error GoTo CleanFail
-    DefaultPokemonValue = CleanSelection(Pokedex.Range("PKMN_DEX").value, FILTER_ALL)
+    Select Case mContextTarget
+        Case MoveContextPokedex
+            DefaultPokemonValue = CleanSelection(Pokedex.Range("PKMN_DEX").value, FILTER_ALL)
+        Case Else
+            DefaultPokemonValue = FILTER_ALL
+    End Select
     Exit Function
 CleanFail:
     DefaultPokemonValue = FILTER_ALL
@@ -610,10 +620,51 @@ End Function
 
 Private Sub UpdateContextCells(ByVal Pokemon As String, ByVal game As String)
     On Error Resume Next
-    Pokedex.Range("PKMN_DEX").value = IIf(StrComp(Pokemon, FILTER_ALL, vbTextCompare) = 0, FILTER_ALL, Pokemon)
-    Pokedex.Range("GAME").value = game
+    Select Case mContextTarget
+        Case MoveContextPokedex
+            Pokedex.Range("PKMN_DEX").value = IIf(StrComp(Pokemon, FILTER_ALL, vbTextCompare) = 0, FILTER_ALL, Pokemon)
+            Pokedex.Range("GAME").value = game
+        Case MoveContextMovedex
+            Movedex.Range("GAMEVERSION").value = game
+        Case Else
+            ' No workbook context to update
+    End Select
     On Error GoTo 0
 End Sub
+
+Private Function ContextGameValue() As String
+    On Error GoTo CleanFail
+    Select Case mContextTarget
+        Case MoveContextPokedex
+            ContextGameValue = CleanSelection(Pokedex.Range("GAME").value, FILTER_ALL)
+        Case MoveContextMovedex
+            ContextGameValue = CleanSelection(Movedex.Range("GAMEVERSION").value, FILTER_ALL)
+        Case Else
+            ContextGameValue = FILTER_ALL
+    End Select
+    Exit Function
+CleanFail:
+    ContextGameValue = FILTER_ALL
+End Function
+
+Private Function DetectMoveContextTarget() As MoveFormContext
+    On Error GoTo CleanFallback
+    Dim ws As Worksheet
+    Set ws = Application.ActiveSheet
+    If ws Is Nothing Then GoTo CleanFallback
+
+    If ws Is Pokedex Then
+        DetectMoveContextTarget = MoveContextPokedex
+    ElseIf ws Is Movedex Then
+        DetectMoveContextTarget = MoveContextMovedex
+    Else
+        DetectMoveContextTarget = MoveContextOther
+    End If
+    Exit Function
+
+CleanFallback:
+    DetectMoveContextTarget = MoveContextOther
+End Function
 
 Private Function ResolveGameLabel(ByVal rawValue As String) As String
     Dim cleaned As String
@@ -1608,11 +1659,22 @@ Public Sub OnRowDoubleClick(ByVal rowIndex As Long)
     If rowIndex <= 0 Or rowIndex > mRowCount Then Exit Sub
     Dim mv As String
     mv = mRows(rowIndex).moveName
-    On Error Resume Next
-    Pokedex.Range("PKMN_MOVELIST").value = mv
-    On Error GoTo 0
-    ' Close the form after selection
-    Unload Me
+    If Len(mv) = 0 Then Exit Sub
+
+    Select Case mContextTarget
+        Case MoveContextPokedex
+            On Error Resume Next
+            Pokedex.Range("PKMN_MOVELIST").value = mv
+            On Error GoTo 0
+            Unload Me
+        Case MoveContextMovedex
+            On Error Resume Next
+            Movedex.Range("MVLIST").value = mv
+            On Error GoTo 0
+            Unload Me
+        Case Else
+            ' No workbook target -> ignore double-click
+    End Select
 End Sub
 
 Private Function CalcRowHeight(ByVal desc As String) As Single
